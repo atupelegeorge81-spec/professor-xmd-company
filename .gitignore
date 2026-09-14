@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build
+.next/
+out/
+build/
+dist/
+
+# Runtime
+*.log
+.runtime/
+
+# Environment (SECRET!)
+.env
+.env.local
+.env.*.local
+.env.production
+
+# TypeScript build
+*.tsbuildinfo
+next-env.d.ts
+
+# Backups
+.backup_*
+*_backup_*
+*.bak
+.bak-archive/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Temp
+.cache/
+*.tmp
