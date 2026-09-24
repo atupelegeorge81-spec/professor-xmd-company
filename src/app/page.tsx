@@ -73,46 +73,78 @@ export default function HomePage() {
   }, []);
 
   const agent = getAgent(view);
-  const roomLabel = view === "board" ? "Board Room" : view === "reports" ? "Reports" : (agent?.name ?? view);
+  const roomLabel =
+    view === "board" ? "Board Room" : view === "reports" ? "Reports" : agent?.name ?? view;
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-background text-foreground">
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0"
-        style={{
-          background:
-            "radial-gradient(60rem 30rem at 85% -10%, oklch(0.79 0.14 220 / 0.09), transparent 60%), radial-gradient(50rem 28rem at 5% 110%, oklch(0.7 0.19 305 / 0.08), transparent 60%)",
-        }}
-      />
+    <div className="app-shell relative bg-transparent text-foreground">
+      {/* Atmosphere — drifting signal light behind everything */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+        <div
+          className="absolute left-[58%] top-[-16rem] h-[34rem] w-[34rem] rounded-full opacity-60 blur-[120px]"
+          style={{ background: "radial-gradient(circle, oklch(0.62 0.24 293 / 0.20), transparent 70%)" }}
+        />
+        <div
+          className="absolute bottom-[-14rem] right-[8%] h-[30rem] w-[30rem] rounded-full opacity-50 blur-[120px]"
+          style={{ background: "radial-gradient(circle, oklch(0.8 0.14 220 / 0.16), transparent 70%)" }}
+        />
+        {/* Fine grid for depth */}
+        <div
+          className="absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage:
+              "linear-gradient(oklch(1 0 0 / 0.55) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / 0.55) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            maskImage: "radial-gradient(75% 70% at 50% 36%, #000 40%, transparent 100%)",
+            WebkitMaskImage: "radial-gradient(75% 70% at 50% 36%, #000 40%, transparent 100%)",
+          }}
+        />
+      </div>
 
-      <header ref={headerRef} className="glass-strong relative z-20 mx-auto mt-3 flex w-[calc(100%-1.5rem)] max-w-5xl shrink-0 items-center gap-3 rounded-3xl px-3.5 py-2.5">
-        <span className="avatar-frame" style={{ width: 42, height: 42, minWidth: 42 }}>
-          <img src="/brand/logo.png" alt="PROFESSOR-XMD-COMPANY logo" width={84} height={84} className="avatar-img" />
+      {/* Brand header */}
+      <header
+        ref={headerRef}
+        className="glass-strong relative z-20 mx-auto mt-3 flex w-[calc(100%-1.5rem)] max-w-6xl shrink-0 items-center gap-3 rounded-[1.4rem] px-3.5 py-2.5"
+      >
+        <span className="brand-lockup relative h-11 w-11 shrink-0 overflow-hidden p-[3px]">
+          <img
+            src="/brand/logo.png"
+            alt="PROFESSOR-XMD-COMPANY logo"
+            width={92}
+            height={92}
+            className="h-full w-full rounded-full object-cover"
+          />
         </span>
+
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-[15px] font-bold leading-5 tracking-tight text-foreground">
+          <h1 className="truncate font-display text-[16px] font-bold leading-5 tracking-tight text-foreground">
             PROFESSOR-XMD<span className="text-signal">-COMPANY</span>
           </h1>
-          <p className="truncate text-[10.5px] text-muted-foreground">Autonomous AI engineering company</p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            Autonomous AI engineering company
+          </p>
         </div>
-        <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-border bg-background/50 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground sm:flex">
-          <span className="h-1.5 w-1.5 rounded-full bg-signal" />
+
+        <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-border bg-background/50 px-2.5 py-1 text-[10.5px] font-semibold text-muted-foreground sm:flex">
+          <span className="h-1.5 w-1.5 rounded-full bg-signal shadow-[0_0_8px_var(--primary)]" />
           {roomLabel}
         </span>
+
         <button
           onClick={() => setChatsOpen(true)}
           aria-label="Board Room chats"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-muted-foreground transition hover:bg-secondary hover:text-foreground active:scale-95"
+          title="Board Room chats"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground transition hover:bg-secondary hover:text-foreground active:scale-95"
         >
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </button>
+
         <button
           onClick={() => setMenuOpen(true)}
           aria-label="Open menu"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-muted-foreground transition hover:bg-secondary hover:text-foreground active:scale-95"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted-foreground transition hover:bg-secondary hover:text-foreground active:scale-95"
         >
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round">
             <path d="M4 7h16M4 12h16M4 17h16" />
@@ -120,28 +152,63 @@ export default function HomePage() {
         </button>
       </header>
 
-      <nav className="relative z-10 mx-auto mt-2.5 flex w-[calc(100%-1.5rem)] max-w-5xl shrink-0 items-center gap-1.5 overflow-x-auto scroll-thin pb-0.5">
-        <RailButton active={view === "board"} onClick={() => setView("board")} label={<span className="flex items-center gap-1.5"><img src="/boardroom.png" alt="Board Room" className="h-5 w-5 rounded-full object-cover" /> Board</span>} />
-        <RailButton active={view === "reports"} onClick={() => setView("reports")} label="📑 Reports" badge={reportsBadge} />
-        <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-        {AGENTS.map((a) => (
-          <button
-            key={a.id}
-            onClick={() => setView(a.id)}
-            className={`flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5 transition-all duration-200 active:scale-95 ${
-              view === a.id
-                ? "border-primary/50 bg-secondary/80 shadow-[0_6px_20px_-10px_var(--primary)]"
-                : "border-border/60 bg-secondary/25 hover:border-primary/30 hover:bg-secondary/50"
-            }`}
-          
-          style={view === a.id ? { borderColor: `${a.accent}80`, backgroundColor: `${a.accent}18`, boxShadow: `0 6px 20px -10px ${a.accent}` } : undefined}
-        >
-            <span className="avatar-frame" style={{ width: 22, height: 22, minWidth: 22 }}>
-              <img src={a.avatar} alt={a.name} width={44} height={44} loading="lazy" decoding="async" className="avatar-img" />
+      {/* Navigation rail */}
+      <nav className="relative z-10 mx-auto mt-2.5 flex w-[calc(100%-1.5rem)] max-w-6xl shrink-0 items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+        <RailButton
+          active={view === "board"}
+          onClick={() => setView("board")}
+          label={
+            <span className="flex items-center gap-1.5">
+              <span className="grid h-5 w-5 place-items-center overflow-hidden rounded-full ring-1 ring-white/10">
+                <img src="/boardroom.png" alt="Board Room" className="h-5 w-5 rounded-full object-cover" />
+              </span>
+              Board
             </span>
-            <span className="text-[11.5px] font-semibold text-foreground/90">{a.name}</span>
-          </button>
-        ))}
+          }
+        />
+        <RailButton
+          active={view === "reports"}
+          onClick={() => setView("reports")}
+          label={
+            <span className="flex items-center gap-1.5">
+              <span className="text-[13px] leading-none">📑</span>
+              Reports
+            </span>
+          }
+          badge={reportsBadge}
+        />
+
+        <span className="mx-1 h-5 w-px shrink-0 bg-border" />
+
+        {AGENTS.map((a) => {
+          const active = view === a.id;
+          return (
+            <button
+              key={a.id}
+              onClick={() => setView(a.id)}
+              className={`flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5 transition-all duration-200 active:scale-95 ${
+                active
+                  ? "text-foreground"
+                  : "border-border/60 bg-white/[0.03] text-foreground/80 hover:border-primary/30 hover:bg-white/[0.06] hover:text-foreground"
+              }`}
+              style={
+                active
+                  ? {
+                      borderColor: `${a.accent}99`,
+                      backgroundColor: `${a.accent}1c`,
+                      boxShadow: `0 8px 24px -14px ${a.accent}`,
+                    }
+                  : undefined
+              }
+            >
+              <span className="avatar-frame" style={{ width: 22, height: 22, minWidth: 22 }}>
+                <img src={a.avatar} alt={a.name} width={44} height={44} loading="lazy" decoding="async" className="avatar-img" />
+              </span>
+              <span className="text-[11.5px] font-semibold">{a.name}</span>
+              {active && <span className="h-1.5 w-1.5 rounded-full" style={{ background: a.accent, boxShadow: `0 0 8px ${a.accent}` }} />}
+            </button>
+          );
+        })}
       </nav>
 
       <main className="relative z-10 flex min-h-0 flex-1 flex-col">
@@ -180,18 +247,32 @@ export default function HomePage() {
   );
 }
 
-function RailButton({ active, onClick, label, badge }: { active: boolean; onClick: () => void; label: ReactNode; badge?: number }) {
+function RailButton({
+  active,
+  onClick,
+  label,
+  badge,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: ReactNode;
+  badge?: number;
+}) {
   return (
     <button
       onClick={onClick}
       className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-semibold transition-all duration-200 active:scale-95 ${
         active
-          ? "border-primary/50 bg-secondary/80 text-foreground shadow-[0_6px_20px_-10px_var(--primary)]"
-          : "border-border/60 bg-secondary/25 text-foreground/80 hover:border-primary/30 hover:bg-secondary/50"
+          ? "border-white/15 bg-white/[0.07] text-foreground shadow-[0_10px_26px_-16px_var(--primary)]"
+          : "border-border/60 bg-white/[0.03] text-foreground/80 hover:border-primary/30 hover:bg-white/[0.06] hover:text-foreground"
       }`}
     >
       {label}
-      {badge ? <span className="rounded-full bg-primary px-1.5 py-px text-[9px] font-bold text-primary-foreground">{badge}</span> : null}
+      {badge ? (
+        <span className="rounded-full bg-signal px-1.5 py-px text-[9px] font-bold text-primary-foreground">
+          {badge}
+        </span>
+      ) : null}
     </button>
   );
 }

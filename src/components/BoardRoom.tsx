@@ -535,18 +535,89 @@ export function BoardRoom({ addLog, setUsage, onReport, convSignal }: Props) {
       <div ref={scrollRef} data-board-stream-scroll onScroll={handleScroll} className="scroll-thin min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex min-h-full max-w-3xl flex-col space-y-5 px-4 pb-6 pt-5">
           {items.length === 0 && phase === "idle" && (
-<div className="rise-in flex min-h-full flex-col items-center justify-center px-4">
-<div className="boardroom-hero w-full">
-<img
-src="/boardroomhero.png"
-alt="The Board Room"
-className="boardroom-hero-img"
-loading="eager"
-decoding="async"
-/>
-</div>
-</div>
-)}
+            <div className="flex min-h-full flex-col items-center justify-center px-4 py-6">
+              <div className="w-full max-w-2xl">
+                {/* Stage — the decision table */}
+                <div className="rise-in">
+                  <div className="boardroom-stage">
+                    <div className="boardroom-stage-img-wrap">
+                      <img
+                        src="/boardroomhero.png"
+                        alt="The Board Room"
+                        className="boardroom-stage-img"
+                        loading="eager"
+                        decoding="async"
+                      />
+                    </div>
+                    <span className="boardroom-stage-chip">The Board Room</span>
+                  </div>
+                  <h2 className="mt-10 text-center font-display text-[22px] font-bold leading-snug tracking-tight text-foreground">
+                    Five agents. One table. <span className="text-signal">Your project.</span>
+                  </h2>
+                  <p className="mx-auto mt-2 max-w-md text-center text-[13.5px] leading-relaxed text-muted-foreground">
+                    Drop a product idea on the table — Optimus chairs the debate while
+                    Ultron, Vextron, Megatron and Cybertron plan, challenge and decide.
+                  </p>
+                </div>
+
+                {/* The team */}
+                <div className="mt-8 flex justify-center gap-2.5 px-2 sm:gap-3">
+                  {AGENTS.map((a, i) => (
+                    <button
+                      key={a.id}
+                      onClick={() => setPrompt((p) => (p ? `${p.trim()} ` : "") + a.emoji)}
+                      title={`${a.name} · ${a.role}`}
+                      className="agent-card w-full max-w-[140px]"
+                      style={
+                        {
+                          animationDelay: `${i * 60}ms`,
+                          "--agent-accent": a.accent,
+                        } as React.CSSProperties
+                      }
+                    >
+                      <span className="relative">
+                        <img
+                          src={a.avatar}
+                          alt={a.name}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-14 w-14 rounded-full object-cover ring-1 ring-white/15"
+                          style={{ boxShadow: `0 10px 22px -14px ${a.accent}` }}
+                        />
+                        <span className="agent-card-badge">{a.emoji}</span>
+                      </span>
+                      <span className="text-[12px] font-semibold text-foreground/90">{a.name}</span>
+                      <span className="text-[9.5px] uppercase tracking-[0.14em]" style={{ color: a.accent }}>
+                        {a.role}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Quick-start prompts */}
+                <div className="mt-7 flex flex-wrap items-center justify-center gap-2 px-2">
+                  <span className="text-[11px] font-semibold text-muted-foreground">
+                    Kick it off:
+                  </span>
+                  {[
+                    "App ya malipo ya M-Pesa",
+                    "E-commerce ya mavazi",
+                    "AI SaaS ya kilimo",
+                    "Fintech loan dashboard",
+                  ].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setPrompt(s)}
+                      className="suggestion-chip"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {items.map((it, idx) => {
             if (!loadedAsHistory && idx > frontierIndex) return null;
@@ -587,24 +658,31 @@ decoding="async"
       </div>
     {items.length === 0 && phase === "idle" && (
       <div className="shrink-0 w-full px-4 pt-2 pb-[calc(18px+env(safe-area-inset-bottom,0px))]">
-        <div className="glass-strong mx-auto flex w-full max-w-md items-end gap-1.5 rounded-[24px] border border-white/10 p-1.5 shadow-2xl backdrop-blur-xl transition-shadow focus-within:ring-signal">
+        <div className="mx-auto flex w-full max-w-2xl items-end gap-1.5 rounded-[26px] border border-white/10 bg-white/[0.04] p-2 shadow-[0_30px_70px_-40px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl transition-all focus-within:border-primary/40 focus-within:bg-white/[0.06] focus-within:ring-signal">
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                start(prompt);
+              }
+            }}
             onInput={(e) => {
               const el = e.currentTarget;
-              el.style.height = "36px";
-              el.style.height = `${Math.min(Math.max(el.scrollHeight, 36), 120)}px`;
+              el.style.height = "42px";
+              el.style.height = `${Math.min(Math.max(el.scrollHeight, 42), 130)}px`;
             }}
             rows={1}
-            placeholder="Eleza project yako hapa…"
-            className="scroll-thin max-h-[120px] min-h-[36px] flex-1 resize-none overflow-y-auto bg-transparent px-3 py-1.5 text-[12px] leading-5 text-foreground outline-none placeholder:text-muted-foreground"
+            placeholder="Eleza project yako hapa… mf. “jenga app ya michezo ya simu”"
+            className="boardroom-input"
           />
           <button
             onClick={() => start(prompt)}
             disabled={!prompt.trim()}
-            aria-label="Send"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-signal text-primary-foreground transition-transform duration-200 hover:scale-105 active:scale-95 disabled:opacity-35 disabled:hover:scale-100"
+            aria-label="Send to the board"
+            title="Peleka kwenye meza"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-signal text-primary-foreground shadow-[0_10px_26px_-10px_var(--primary)] transition-all duration-200 hover:scale-105 hover:shadow-[0_12px_30px_-8px_var(--primary)] active:scale-95 disabled:opacity-35 disabled:hover:scale-100"
           >
             <svg
               width="17"

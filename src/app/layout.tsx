@@ -6,7 +6,8 @@ import "highlight.js/styles/github-dark.css";
 
 export const metadata: Metadata = {
   title: "PROFESSOR-XMD-COMPANY",
-  description: "Chat room ya virtual AI software company — agents 5 wanaotumia Groq Qwen3.6 na web search (SearXNG).",
+  description:
+    "Command deck ya virtual AI software company — board room + agents 5 wanaotafakari, wanatafiti na kuandika ripoti za Kiswahili.",
 };
 
 export const viewport: Viewport = {
