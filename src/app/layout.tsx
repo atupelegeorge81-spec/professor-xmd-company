@@ -5,8 +5,8 @@ import "katex/dist/katex.min.css";
 import "highlight.js/styles/github-dark.css";
 
 export const metadata: Metadata = {
-  title: "PROFESSOR-XMD-COMPANY",
-  description: "Chat room ya virtual AI software company — agents 5 wanaotumia Groq Qwen3.6 na web search (SearXNG).",
+  title: "Professor XMD Company — AI Command Center",
+  description: "A focused command center for turning ambitious ideas into clear, evidence-backed action with a council of specialist AI agents.",
 };
 
 export const viewport: Viewport = {
