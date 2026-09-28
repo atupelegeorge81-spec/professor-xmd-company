@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""xmd-map [dir] — muhtasari wa repo (~500 tokens): mafaili, ukubwa, mwanzo wa README."""
+import os, sys
+root = sys.argv[1] if len(sys.argv) > 1 else "."
+SKIP = {".git", "node_modules", "dist", "build", ".next", "__pycache__", ".venv", ".xmd"}
+files = []
+for d, ds, fs in os.walk(root):
+    ds[:] = [x for x in ds if x not in SKIP]
+    for f in fs:
+        p = os.path.join(d, f)
+        try: files.append((os.path.relpath(p, root), os.path.getsize(p)))
+        except OSError: pass
+files.sort()
+print(f"{len(files)} files in {os.path.abspath(root)}")
+for p, s in files[:60]:
+    print(f"  {p}  ({s:,} B)")
+if len(files) > 60: print(f"  … +{len(files)-60} more (use: find . -name '*.ext')")
+for r in ("README.md", "readme.md", "package.json"):
+    fp = os.path.join(root, r)
+    if os.path.exists(fp):
+        print(f"\n--- {r} (first 12 lines)")
+        print("".join(open(fp, errors="replace").readlines()[:12]).rstrip())
+        break

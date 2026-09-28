@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# xmd-deploy DIR — host; inarudisha "OK <url>" au kosa wazi.
+dir="${1:-.}"; [ -f "$dir/index.html" ] || { echo "ERROR $dir/index.html not found (build first?)"; exit 1; }
+if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
+  out=$(npx -y netlify-cli@17 deploy --prod --dir "$dir" --json 2>/dev/null) || { echo "ERROR netlify deploy failed"; exit 1; }
+  url=$(echo "$out" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('deploy_url') or d.get('url'))"); echo "OK $url"
+elif [ -n "$VERCEL_TOKEN" ]; then
+  url=$(npx -y vercel@latest deploy "$dir" --prod --yes --token "$VERCEL_TOKEN" 2>/dev/null | tail -1) || { echo "ERROR vercel deploy failed"; exit 1; }
+  echo "OK $url"
+else
+  echo "ERROR no deploy token (set NETLIFY_AUTH_TOKEN or VERCEL_TOKEN)"; exit 3
+fi

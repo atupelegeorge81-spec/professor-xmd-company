@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# xmd-push "ujumbe" — add + commit + push; inarudisha mstari mmoja.
+msg="${1:-update}"
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "ERROR not a git repo"; exit 1; }
+git add -A && (git diff --cached --quiet && echo "nothing to commit" || git commit -qm "$msg") || { echo "ERROR commit failed"; exit 1; }
+remote=$(git remote get-url origin 2>/dev/null) || { echo "ERROR no origin remote"; exit 1; }
+if [[ "$remote" == https://github.com/* ]]; then
+  [ -n "$GITHUB_TOKEN" ] || { echo "ERROR GITHUB_TOKEN missing — cannot push. Committed locally: $(git rev-parse --short HEAD)"; exit 3; }
+  authed="https://x-access-token:${GITHUB_TOKEN}@${remote#https://}"
+  git push -q "$authed" HEAD 2>&1 | sed "s/${GITHUB_TOKEN}/***/g" | tail -3
+else
+  git push -q origin HEAD 2>&1 | tail -3
+fi
+st=${PIPESTATUS[0]}; sha=$(git rev-parse HEAD)
+url="${remote%.git}"; url="${url/git@github.com:/https://github.com/}"
+[ "$st" = 0 ] && echo "OK $(git rev-parse --short HEAD) $url/commit/$sha" || { echo "ERROR push failed"; exit 1; }

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# xmd-browse open|snap|click|type ... — agent-browser (snapshot + refs, ~200-400 tokens/ukurasa)
+if command -v agent-browser >/dev/null 2>&1; then
+  case "$1" in snap) shift; exec agent-browser snapshot -i "$@";; type) shift; exec agent-browser fill "$@";; *) exec agent-browser "$@";; esac
+fi
+echo "agent-browser not installed (npm i -g agent-browser && agent-browser install). Use: xmd-fetch URL"; exit 3

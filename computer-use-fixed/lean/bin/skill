@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# skill <name> — chapisha maelekezo ya skill (ngazi 1). Bila jina: orodha.
+D="${XMD_SKILLS_DIR:-$(dirname "$0")/../skills}"
+if [ -z "$1" ]; then for f in "$D"/*/SKILL.md; do n=$(basename "$(dirname "$f")"); d=$(grep -m1 '^description:' "$f" | cut -d: -f2-); echo "@$n:$d"; done; exit 0; fi
+n="${1#@}"; f="$D/$n/SKILL.md"
+[ -f "$f" ] || { echo "No skill named '$n'. Available:"; ls "$D"; exit 1; }
+awk 'BEGIN{c=0} /^---$/{c++; next} c>=2' "$f"

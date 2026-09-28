@@ -1,0 +1,33 @@
+{
+  "name": "computer-use",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:ui": "cd copilotkit && npm run build",
+    "dev": "npm run build:ui && npx tsx server.ts",
+    "start": "npx tsx server.ts",
+    "lean": "node lean/server.mjs",
+    "lean:dev": "npm run build:ui && node lean/server.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@ag-ui/client": "^0.0.59",
+    "@ag-ui/core": "^0.0.59",
+    "@ag-ui/encoder": "^0.0.59",
+    "@e2b/code-interpreter": "^2.8.0",
+    "@modelcontextprotocol/client": "^2.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}

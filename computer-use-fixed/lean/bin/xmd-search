@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""xmd-search "maneno" — SearXNG (northflank) → matokeo 5, mistari 2 kila moja.
+
+Tabia ile ile ya app ya kampuni (src/lib/search.ts · doFreshSearch):
+  * retries 10 (majaribio 11) yenye backoff 2s→4s→6s→8s (max 8s) — inavuka
+    cold-start ya Render free tier (instance hulala baada ya ~dakika 15 bila
+    movement, kuamka kwake huchukua sekunde 50–90)
+  * timeout ya sekunde 25 KILA jaribio (si kufa mara moja kama zamani)
+  * headers kamili za browser (UA + Accept + Accept-Language)
+  * engines = zile 7 zilizowashwa KWELI kwenye instance (settings.yml keep_only);
+    zamani orodha ilikuwa na duckduckgo/brave/wikipedia — hazipo kwenye instance hii
+
+Matokeo yanarudi kwa format ILE ILE ("N. title — url" + snippet) — UI
+(parseSearch) na model wanasoma bila mabadiliko. Maendeleo ya retries yanaonekana
+LIVE kwenye UI (stderr inatiririka kama exec_output) na kwenye observation ya model.
+"""
+import json, os, sys, time, urllib.error, urllib.parse, urllib.request
+
+q = " ".join(sys.argv[1:]).strip()
+if not q:
+    print('usage: xmd-search "query"'); sys.exit(1)
+
+base = (os.environ.get("SEARXNG_URL") or os.environ.get("SEARCH_ENGINE_URL")
+        or "https://searxng-northflank.onrender.com").rstrip("/")
+ENGINES = os.environ.get("XMD_SEARCH_ENGINES", "bing,google,yandex,naver,seznam,github,stackoverflow")
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+HEADERS = {"User-Agent": UA,
+           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+           "Accept-Language": "en-US,en;q=0.9"}
+RETRIES = int(os.environ.get("XMD_SEARCH_RETRIES", "10"))   # majaribio = RETRIES + 1 (kama kampuni)
+TIMEOUT = int(os.environ.get("XMD_SEARCH_TIMEOUT", "25"))   # sekunde, KWA KILA jaribio
+
+
+def fetch(params):
+    req = urllib.request.Request(base + "/search?" + urllib.parse.urlencode(params), headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+        return json.load(r).get("results") or []
+
+
+def progress(msg):  # stderr — inaonekana LIVE (exec_output), haichanganyiki na matokeo
+    sys.stderr.write(msg + "\n"); sys.stderr.flush()
+
+
+res, last_err = [], ""
+for attempt in range(1, RETRIES + 2):
+    params = {"q": q, "format": "json"}
+    if ENGINES:
+        params["engines"] = ENGINES
+    try:
+        res = fetch(params)
+        break
+    except Exception as e:
+        last_err = str(e)
+        if attempt <= RETRIES:
+            wait = min(2 * attempt, 8)
+            progress(f"⏳ search attempt {attempt}/{RETRIES + 1} failed ({last_err[:80]}) — retrying in {wait}s…")
+            time.sleep(wait)
+
+# results 0 SI kosa la mtandao: jaribio MOJA bila `engines` (defaults za instance);
+# likibaki tupu, "no results" ni jibu halali (kama kampuni — hakuna retry ya tupu)
+if not res and not last_err and ENGINES:
+    try:
+        res = fetch({"q": q, "format": "json"})
+    except Exception as e:
+        last_err = str(e)
+
+if not res and last_err:
+    print(f"search failed after {RETRIES + 1} attempts: {last_err}"); sys.exit(2)
+if not res:
+    print("no results"); sys.exit(0)
+
+for i, r in enumerate(res[:5], 1):
+    snip = " ".join((r.get("content") or "").split())[:180]
+    print(f"{i}. {(r.get('title') or '').strip()} — {r.get('url', '')}\n   {snip}")

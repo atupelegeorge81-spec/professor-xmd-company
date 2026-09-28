@@ -1,0 +1,497 @@
+/* XMD-Lean — mtindo mpya kabisa (haitumii agent-anim).
+   Kanuni: harakati ndogo zenye maana tu — kila animation inaashiria kitu kinachotokea SASA. */
+
+.xl {
+  --bg: #f7f6f3;
+  --panel: #ffffff;
+  --ink: #18181b;
+  --ink2: #3f3f46;
+  --muted: #71717a;
+  --faint: #a1a1aa;
+  --line: #e7e5e0;
+  --line2: #f0eee9;
+  --live: #2563eb;
+  --live-soft: #e8f0fe;
+  --ok: #15803d;
+  --ok-soft: #e7f6ec;
+  --fail: #dc2626;
+  --fail-soft: #fdecec;
+  --warn: #b45309;
+  --warn-soft: #fdf3e2;
+  --think: #6d28d9;
+  --term: #0e1116;
+  --term-ink: #d8dee9;
+  --term-dim: #7d8590;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --r: 12px;
+
+  position: fixed;
+  inset: 0;
+  display: flex;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.55 "Inter Variable", Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+.xl *, .xl *::before, .xl *::after { box-sizing: border-box; }
+.xl button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.xl button:disabled { cursor: default; opacity: .45; }
+.xl code, .xl pre { font-family: var(--mono); }
+.xl-num { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------ keyframes */
+@keyframes xl-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@keyframes xl-rot { to { transform: rotate(360deg); } }
+@keyframes xl-blink { 0%, 45% { opacity: 1; } 55%, 100% { opacity: 0; } }
+@keyframes xl-shimmer { from { background-position: 120% 0; } to { background-position: -20% 0; } }
+@keyframes xl-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--c, var(--live)) 45%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+@keyframes xl-scan { 0% { left: -35%; } 100% { left: 100%; } }
+@keyframes xl-dot { 0%, 80%, 100% { transform: translateY(0); opacity: .35; } 40% { transform: translateY(-3px); opacity: 1; } }
+@keyframes xl-skel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes xl-sheet { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes xl-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes xl-write { 0%, 100% { opacity: .0; } 50% { opacity: 1; } }
+
+.xl-in { animation: xl-in .22s cubic-bezier(.2, .7, .2, 1) both; }
+
+.xl-shimmer {
+  background: linear-gradient(90deg, var(--muted) 0%, var(--muted) 40%, var(--ink) 50%, var(--muted) 60%, var(--muted) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: xl-shimmer 1.6s linear infinite;
+}
+.xl-caret {
+  display: inline-block;
+  width: 7px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: currentColor;
+  border-radius: 1px;
+  animation: xl-blink 1s steps(1) infinite;
+}
+.xl-spin {
+  display: inline-block;
+  flex: none;
+  border-radius: 50%;
+  border: 1.6px solid color-mix(in srgb, var(--live) 22%, transparent);
+  border-top-color: var(--live);
+  animation: xl-rot .75s linear infinite;
+}
+.xl-dots { display: inline-flex; gap: 3px; align-items: center; }
+.xl-dots i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: xl-dot 1.1s infinite; }
+.xl-dots i:nth-child(2) { animation-delay: .15s; }
+.xl-dots i:nth-child(3) { animation-delay: .3s; }
+
+/* ------------------------------------------------------------ layout */
+.xl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.xl-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; scroll-behavior: auto; }
+.xl-feed { max-width: 780px; margin: 0 auto; padding: 20px 20px 28px; }
+
+/* ------------------------------------------------------------ header */
+.xl-head {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  height: 52px; padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 88%, white);
+  flex: none;
+}
+.xl-brand { display: flex; align-items: center; gap: 7px; font-size: 15px; }
+.xl-logo, .xl-avatar, .xl-empty__logo {
+  display: grid; place-items: center;
+  width: 24px; height: 24px; border-radius: 7px;
+  background: var(--ink); color: #fff; font-weight: 700; font-size: 13px;
+}
+.xl-brand__sub { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; }
+.xl-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 26px; padding: 0 10px; border-radius: 99px;
+  font-size: 12px; color: var(--ink2); background: var(--panel); border: 1px solid var(--line);
+  max-width: 40vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.xl-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+.xl-pill--run { color: var(--live); border-color: color-mix(in srgb, var(--live) 30%, var(--line)); background: var(--live-soft); }
+.xl-pill--run i { background: var(--live); animation: xl-ring 1.3s ease-out infinite; }
+.xl-pill--offline i, .xl-pill--connecting i { background: var(--warn); }
+.xl-head__right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.xl-model { font: 11.5px var(--mono); color: var(--muted); padding: 3px 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.xl-meter { display: inline-flex; align-items: baseline; gap: 4px; padding: 0 6px; }
+.xl-meter__n { font-weight: 600; font-variant-numeric: tabular-nums; }
+.xl-meter__l { font-size: 11px; color: var(--muted); }
+.xl-iconbtn {
+  display: inline-grid; place-items: center;
+  width: 28px; height: 28px; border-radius: 8px; color: var(--muted); text-decoration: none;
+  transition: background .15s, color .15s;
+}
+.xl-iconbtn:hover:not(:disabled) { background: var(--line2); color: var(--ink); }
+.xl-hist {
+  position: absolute; right: 12px; top: 48px; z-index: 30; width: min(340px, calc(100vw - 24px));
+  max-height: 60vh; overflow: auto; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: 0 12px 40px rgba(0,0,0,.12); padding: 6px;
+}
+.xl-hist__h { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 6px; }
+.xl-hist__e { padding: 10px; color: var(--muted); }
+.xl-hist > button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 8px 10px; border-radius: 8px; }
+.xl-hist > button span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xl-hist > button:hover, .xl-hist > button.is-on { background: var(--line2); }
+.xl-dotlive { width: 7px; height: 7px; border-radius: 50%; background: var(--live); animation: xl-ring 1.3s infinite; }
+
+/* ------------------------------------------------------------ empty */
+.xl-empty { text-align: center; padding: 11vh 8px 0; }
+.xl-empty__logo { width: 44px; height: 44px; border-radius: 13px; font-size: 22px; margin: 0 auto 16px; }
+.xl-empty h1 { font-size: 24px; font-weight: 650; letter-spacing: -.02em; margin: 0 0 6px; }
+.xl-empty p { color: var(--muted); max-width: 470px; margin: 0 auto 22px; }
+.xl-suggest { display: grid; gap: 8px; max-width: 520px; margin: 0 auto; }
+.xl-suggest button {
+  text-align: left; padding: 11px 14px; border-radius: 11px; background: var(--panel);
+  border: 1px solid var(--line); color: var(--ink2); transition: border-color .15s, transform .15s;
+}
+.xl-suggest button:hover { border-color: var(--faint); transform: translateY(-1px); }
+
+/* ------------------------------------------------------------ run */
+.xl-run + .xl-run { margin-top: 26px; }
+.xl-user { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.xl-user__bubble {
+  max-width: 82%; padding: 9px 14px; border-radius: 16px 16px 4px 16px;
+  background: var(--ink); color: #fafafa; white-space: pre-wrap; word-break: break-word;
+}
+.xl-agent__head { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-bottom: 8px; }
+.xl-avatar { width: 22px; height: 22px; font-size: 11px; border-radius: 6px; }
+.xl-avatar.is-live { --c: var(--ink); animation: xl-ring 1.4s ease-out infinite; }
+.xl-agent__name { font-weight: 600; }
+.xl-agent__meta { font-size: 11.5px; color: var(--faint); margin-left: auto; }
+.xl-chip {
+  font: 11.5px var(--mono); padding: 1px 7px; border-radius: 6px;
+  background: #f3effd; color: var(--think); border: 1px solid #e6defb;
+}
+
+/* ------------------------------------------------------------ steps + rail */
+.xl-steps { position: relative; }
+.xl-step { position: relative; display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding-bottom: 12px; }
+.xl-step__rail { position: relative; display: flex; justify-content: center; padding-top: 7px; }
+.xl-step__rail::after {
+  content: ""; position: absolute; top: 22px; bottom: -6px; left: 50%; width: 1px; transform: translateX(-50%);
+  background: var(--line);
+}
+.xl-step.is-last .xl-step__rail::after { display: none; }
+.xl-step__body { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.xl-node {
+  position: relative; z-index: 1; display: grid; place-items: center;
+  width: 14px; height: 14px; border-radius: 50%; color: #fff; flex: none;
+}
+.xl-node--ok { background: var(--ok); }
+.xl-node--fail { background: var(--fail); }
+.xl-node--idle { background: var(--line); }
+.xl-node--live { background: var(--panel); border: 1.6px solid color-mix(in srgb, var(--live) 25%, transparent); border-top-color: var(--live); animation: xl-rot .8s linear infinite; }
+
+.xl-say { color: var(--ink2); white-space: pre-wrap; word-break: break-word; }
+.xl-draftline { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; padding: 3px 0; }
+
+/* ------------------------------------------------------------ thinking */
+.xl-think { font-size: 13px; }
+.xl-think__head { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); padding: 2px 0; }
+.xl-think__head:hover { color: var(--ink2); }
+.xl-think.is-live .xl-think__head svg:first-child { color: var(--think); }
+.xl-think__t { font-size: 12px; color: var(--faint); }
+.xl-think__body {
+  margin: 4px 0 2px 6px; padding: 2px 0 2px 12px; border-left: 2px solid var(--line);
+  color: var(--muted); white-space: pre-wrap; word-break: break-word; font-size: 12.8px; line-height: 1.55;
+  max-height: 300px; overflow: auto;
+}
+.xl-think__body.is-live {
+  max-height: 128px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
+  border-left-color: color-mix(in srgb, var(--think) 40%, var(--line));
+}
+.xl-think__body.is-live.is-long {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 36px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 36px);
+}
+.xl-chev { transition: transform .18s; color: var(--faint); flex: none; }
+.xl-chev.is-open { transform: rotate(90deg); }
+.xl-collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
+.xl-collapse.is-open { grid-template-rows: 1fr; }
+.xl-collapse__inner { overflow: hidden; min-height: 0; }
+
+/* ------------------------------------------------------------ tool card */
+.xl-card {
+  position: relative; overflow: hidden;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  transition: border-color .2s, box-shadow .2s;
+  animation: xl-in .22s cubic-bezier(.2,.7,.2,1) both;
+}
+.xl-card.is-live, .xl-card.is-drafting { border-color: color-mix(in srgb, var(--live) 35%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 8%, transparent); }
+.xl-card.is-fail { border-color: color-mix(in srgb, var(--fail) 35%, var(--line)); }
+.xl-scan {
+  position: absolute; top: 0; left: -35%; width: 35%; height: 2px; z-index: 2;
+  background: linear-gradient(90deg, transparent, var(--live), transparent);
+  animation: xl-scan 1.4s ease-in-out infinite;
+}
+.xl-card__head {
+  display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 6px 8px 6px 11px;
+  cursor: pointer; user-select: none;
+}
+.xl-card__icon {
+  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; flex: none;
+  background: var(--line2); color: var(--ink2);
+}
+.xl-card.is-live .xl-card__icon, .xl-card.is-drafting .xl-card__icon { background: var(--live-soft); color: var(--live); }
+.xl-card.is-fail .xl-card__icon { background: var(--fail-soft); color: var(--fail); }
+.xl-card__title { font-weight: 550; font-size: 13px; white-space: nowrap; }
+.xl-card__sub {
+  font: 12px var(--mono); color: var(--muted); min-width: 0; flex: 1 1 auto;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.xl-card__right { margin-left: auto; display: flex; align-items: center; gap: 6px; flex: none; }
+.xl-card__ms { font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.xl-card__body { border-top: 1px solid var(--line2); animation: xl-fade .2s both; }
+.xl-badge { font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--line2); color: var(--muted); white-space: nowrap; }
+.xl-badge--ok { background: var(--ok-soft); color: var(--ok); }
+.xl-badge--fail { background: var(--fail-soft); color: var(--fail); }
+.xl-diff { display: inline-flex; gap: 5px; font: 11.5px var(--mono); }
+.xl-diff .add { color: var(--ok); font-weight: 600; }
+.xl-diff .del { color: var(--fail); font-weight: 600; }
+
+/* terminal */
+.xl-term {
+  background: var(--term); color: var(--term-ink); font: 12.3px/1.55 var(--mono);
+  padding: 10px 12px; overflow: auto; overscroll-behavior: contain;
+}
+.xl-card__body > .xl-term { border-radius: 0 0 calc(var(--r) - 1px) calc(var(--r) - 1px); }
+.xl-term__cmd { display: flex; gap: 8px; color: #fff; word-break: break-all; white-space: pre-wrap; }
+.xl-term__ps { color: #7ee787; flex: none; user-select: none; }
+.xl-term__cmdtxt { min-width: 0; }
+.xl-term__out { margin: 6px 0 0; color: var(--term-ink); white-space: pre-wrap; word-break: break-word; font: inherit; }
+.xl-term .xl-caret { color: #7ee787; width: 7px; }
+.xl-term__wait { color: var(--term-dim); padding-top: 6px; }
+
+/* code / file */
+.xl-filebar {
+  display: flex; align-items: center; gap: 10px; padding: 5px 8px 5px 12px; font: 11.5px var(--mono);
+  color: var(--muted); background: #fbfbfa; border-bottom: 1px solid var(--line2);
+}
+.xl-filebar span:first-child { color: var(--ink2); font-weight: 600; }
+.xl-filebar .xl-iconbtn { margin-left: auto; width: 24px; height: 24px; }
+.xl-code { position: relative; overflow: auto; font: 12.2px/1.6 var(--mono); background: #fdfdfc; }
+.xl-code table { border-collapse: collapse; width: 100%; }
+.xl-code__ln { width: 1%; padding: 0 10px 0 12px; text-align: right; color: #c4c4c9; user-select: none; vertical-align: top; }
+.xl-code__tx { padding: 0 12px 0 4px; white-space: pre-wrap; word-break: break-word; color: var(--ink2); }
+.xl-code tr:first-child td { padding-top: 8px; }
+.xl-code tr:last-child td { padding-bottom: 8px; }
+.xl-code.is-writing tr:last-child td { background: var(--live-soft); }
+.xl-code__more { padding: 6px 12px; font-size: 11.5px; color: var(--muted); border-top: 1px dashed var(--line); }
+
+/* search */
+.xl-hits { list-style: none; margin: 0; padding: 4px; }
+.xl-hits a { display: flex; gap: 10px; padding: 8px; border-radius: 9px; color: inherit; text-decoration: none; }
+.xl-hits a:hover { background: var(--line2); }
+.xl-hits li:nth-child(2) { animation-delay: .05s; } .xl-hits li:nth-child(3) { animation-delay: .1s; }
+.xl-hits li:nth-child(4) { animation-delay: .15s; } .xl-hits li:nth-child(5) { animation-delay: .2s; }
+.xl-hits__fav { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--line2); color: var(--muted); font-size: 11px; font-weight: 700; flex: none; }
+.xl-hits__main { display: flex; flex-direction: column; min-width: 0; }
+.xl-hits__title { font-weight: 550; color: var(--ink); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xl-hits__host { font-size: 11.5px; color: var(--ok); }
+.xl-hits__snip { font-size: 12.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.xl-skel { display: grid; gap: 8px; padding: 12px; }
+.xl-skel i {
+  display: block; height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, var(--line2) 25%, var(--line) 50%, var(--line2) 75%);
+  background-size: 400% 100%; animation: xl-skel 1.4s linear infinite;
+}
+.xl-skel i:nth-child(2) { width: 80%; } .xl-skel i:nth-child(3) { width: 60%; }
+
+/* page */
+.xl-page { padding: 0 0 10px; }
+.xl-page__bar {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px; font: 11.5px var(--mono);
+  color: var(--muted); background: #fafaf9; border-bottom: 1px solid var(--line2); min-width: 0;
+}
+.xl-page__bar span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xl-page__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.xl-page__title { font-weight: 600; padding: 10px 12px 0; }
+.xl-page__meta { font-size: 11.5px; color: var(--faint); padding: 0 12px; }
+.xl-page__body { margin: 6px 12px 0; color: var(--muted); font-size: 12.8px; white-space: pre-wrap; }
+
+.xl-linkout {
+  display: flex; align-items: center; gap: 8px; margin: 8px; padding: 8px 10px; border-radius: 9px;
+  background: var(--ok-soft); color: var(--ok); font: 12px var(--mono); text-decoration: none; word-break: break-all;
+}
+
+/* skill chip */
+.xl-skill {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  padding: 3px 9px; border-radius: 99px; font-size: 12px; color: var(--think);
+  background: #f5f1fe; border: 1px solid #e9e1fc; animation: xl-in .22s both;
+}
+.xl-skill b { font: 600 12px var(--mono); }
+.xl-skill__n { color: #a78bfa; font-size: 11px; }
+.xl-skill.is-live { animation: xl-ring 1.3s infinite; --c: var(--think); }
+
+/* notes */
+.xl-note { display: flex; gap: 8px; align-items: flex-start; font-size: 12.8px; padding: 8px 11px; border-radius: 10px; margin: 2px 0; }
+.xl-note svg { flex: none; margin-top: 3px; }
+.xl-note--guard { background: var(--warn-soft); color: var(--warn); }
+.xl-note--info { background: var(--line2); color: var(--muted); }
+.xl-note--error { background: var(--fail-soft); color: var(--fail); cursor: default; }
+
+/* report */
+.xl-report {
+  margin-top: 6px; padding: 2px 2px 0 30px; color: var(--ink); font-size: 14.5px; line-height: 1.65;
+}
+.xl-report.is-partial { border-left: 3px solid var(--warn); padding-left: 14px; margin-left: 16px; }
+.xl-report__flag { font-size: 12px; color: var(--warn); margin-bottom: 4px; font-weight: 550; }
+.xl-report p { margin: .4em 0; }
+.xl-report h1, .xl-report h2, .xl-report h3 { font-size: 15px; font-weight: 650; margin: .9em 0 .3em; }
+.xl-report ul, .xl-report ol { padding-left: 1.3em; margin: .4em 0; }
+.xl-report ul { list-style: disc; } .xl-report ol { list-style: decimal; }
+.xl-report a { color: var(--live); text-decoration: underline; text-underline-offset: 2px; }
+.xl-report code { font-size: 12.5px; background: var(--line2); padding: 1px 5px; border-radius: 5px; }
+.xl-report pre { background: var(--term); color: var(--term-ink); padding: 10px 12px; border-radius: 10px; overflow: auto; }
+.xl-report pre code { background: none; padding: 0; color: inherit; }
+.xl-runfoot {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 12px 0 0 30px;
+  font-size: 12px; color: var(--faint);
+}
+.xl-runfoot > span:nth-child(2) { color: var(--muted); font-weight: 550; }
+.xl-runfoot--error > span:nth-child(2), .xl-runfoot--stuck > span:nth-child(2) { color: var(--fail); }
+.xl-runfoot--stopped > span:nth-child(2) { color: var(--warn); }
+.xl-runfoot .xl-node { width: 12px; height: 12px; }
+
+/* ------------------------------------------------------------ dock (status + composer) */
+.xl-dock { flex: none; padding: 0 16px 14px; max-width: 812px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; }
+.xl-status {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 8px 8px 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line);
+  font-size: 12.8px;
+}
+.xl-status__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live); animation: xl-ring 1.3s ease-out infinite; flex: none; }
+.xl-status__txt { min-width: 0; flex: 1 1 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xl-status__txt b { font-weight: 550; display: inline-flex; align-items: center; gap: 4px; }
+.xl-status__who { color: var(--muted); }
+.xl-status__meta { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.xl-budget { display: inline-flex; align-items: center; gap: 5px; }
+.xl-budget__bar { width: 44px; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.xl-budget__bar i { display: block; height: 100%; background: var(--live); transition: width .4s ease; }
+.xl-stop {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 8px;
+  background: var(--ink) !important; color: #fff !important; font-size: 12px; font-weight: 550;
+}
+.xl-minipc {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 7px 10px; border-radius: 10px; background: var(--term) !important; color: var(--term-ink) !important;
+  font: 11.5px var(--mono); overflow: hidden;
+}
+.xl-minipc__cmd { color: #fff; flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xl-minipc__out { color: var(--term-dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.xl-composer { position: relative; }
+.xl-composer__box {
+  display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 14px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.04); transition: border-color .15s, box-shadow .15s;
+}
+.xl-composer__box:focus-within { border-color: var(--faint); box-shadow: 0 2px 16px rgba(0,0,0,.07); }
+.xl-composer textarea {
+  flex: 1; resize: none; border: 0; outline: 0; background: transparent; color: var(--ink);
+  font: inherit; font-size: 15px; line-height: 1.45; padding: 5px 0; max-height: 200px;
+}
+.xl-composer textarea::placeholder { color: var(--faint); }
+.xl-send {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; flex: none;
+  background: var(--ink) !important; color: #fff !important; transition: transform .12s, opacity .15s;
+}
+.xl-send:active:not(:disabled) { transform: scale(.94); }
+.xl-send--stop { background: var(--fail) !important; }
+.xl-mention {
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 20;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 5px;
+  box-shadow: 0 10px 34px rgba(0,0,0,.12);
+}
+.xl-mention button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 9px; border-radius: 8px; text-align: left; color: var(--think); }
+.xl-mention button b { font: 600 12.5px var(--mono); }
+.xl-mention button span { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xl-mention button.is-on, .xl-mention button:hover { background: #f5f1fe; }
+
+/* ------------------------------------------------------------ computer panel */
+.xl-pc {
+  width: min(46vw, 660px); flex: none; display: flex; flex-direction: column;
+  border-left: 1px solid var(--line); background: var(--panel); min-height: 0;
+}
+.xl-pc.is-compact { width: 100%; height: 100%; border: 0; }
+.xl-pc__head { display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 12px 0 14px; border-bottom: 1px solid var(--line); flex: none; }
+.xl-pc__head > b { font-size: 14px; }
+.xl-pc__tabs { margin-left: auto; display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--line2); }
+.xl-pc__tabs button { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 7px; font-size: 12px; color: var(--muted); }
+.xl-pc__tabs button.is-on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.xl-pc__status { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line2); min-height: 56px; font-size: 12.5px; flex: none; }
+.xl-pc__app { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--line2); color: var(--ink2); flex: none; }
+.xl-pc__app.is-live { background: var(--live-soft); color: var(--live); --c: var(--live); animation: xl-ring 1.3s infinite; }
+.xl-pc__line { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.xl-pc__using { color: var(--muted); }
+.xl-pc__using b { color: var(--ink); font-weight: 600; }
+.xl-pc__what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink2); }
+.xl-pc__what code { font-size: 11.5px; color: var(--muted); }
+.xl-pc__empty { color: var(--muted); }
+.xl-pc__screen { flex: 1; min-height: 0; margin: 12px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--term); display: flex; flex-direction: column; }
+.xl-pc__screen > .xl-term { flex: 1; max-height: none !important; font-size: 12.8px; padding: 14px 16px; }
+.xl-pc__idle { flex: 1; display: grid; place-content: center; justify-items: center; gap: 10px; color: var(--term-dim); font-size: 13px; }
+.xl-pc__scrub { display: flex; align-items: center; gap: 6px; padding: 0 12px 12px; flex: none; }
+.xl-pc__scrub input[type="range"] { flex: 1; accent-color: var(--ink); }
+.xl-pc__count { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 36px; text-align: center; }
+.xl-live { white-space: nowrap; flex: none; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 8px; font-size: 11.5px; color: var(--muted); border: 1px solid var(--line) !important; }
+.xl-live.is-on { color: var(--live); border-color: color-mix(in srgb, var(--live) 35%, var(--line)) !important; background: var(--live-soft) !important; }
+.xl-live.is-on svg { animation: xl-blink 1.6s steps(1) infinite; }
+.xl-pc__site { flex: 1; display: flex; flex-direction: column; margin: 12px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-height: 0; }
+.xl-pc__site iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+
+.xl-big-code { flex: 1; overflow: auto; background: #fdfdfc; color: var(--ink2); font: 12.6px/1.62 var(--mono); }
+.xl-big-code__tab { position: sticky; top: 0; padding: 7px 14px; background: #f4f3f0; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--ink); z-index: 1; }
+.xl-big-code pre { margin: 0; padding: 8px 0; }
+.xl-big-code__row { display: flex; }
+.xl-big-code__row span { width: 44px; flex: none; text-align: right; padding-right: 12px; color: #c4c4c9; user-select: none; }
+.xl-big-code__row code { white-space: pre-wrap; word-break: break-word; padding-right: 14px; }
+.xl-big-code.is-writing .xl-big-code__row:last-child { background: var(--live-soft); }
+.xl-big-search { flex: 1; overflow: auto; background: #fff; padding: 10px; display: grid; gap: 4px; align-content: start; }
+.xl-big-search a { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 10px; text-decoration: none; color: inherit; }
+.xl-big-search a:hover { background: var(--line2); }
+.xl-big-search small { color: var(--ok); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xl-big-search b { color: #1a0dab; font-weight: 550; font-size: 14.5px; }
+.xl-big-search span { color: var(--muted); font-size: 12.8px; }
+.xl-big-page { flex: 1; overflow: auto; background: #fff; }
+.xl-big-page h3 { font-size: 18px; font-weight: 650; margin: 14px 16px 6px; }
+.xl-big-page p { margin: 0 16px 16px; white-space: pre-wrap; color: var(--ink2); font-size: 13.5px; }
+
+/* ------------------------------------------------------------ mobile sheet */
+.xl-sheet { position: fixed; inset: 0; z-index: 50; background: rgba(15, 15, 18, .38); animation: xl-fade .2s both; display: flex; align-items: flex-end; }
+.xl-sheet__panel { position: relative; width: 100%; height: 86dvh; background: var(--panel); border-radius: 18px 18px 0 0; overflow: hidden; display: flex; flex-direction: column; }
+.xl-sheet-in { animation: xl-sheet .28s cubic-bezier(.2,.8,.2,1) both; }
+.xl-sheet__grab { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 36px; height: 4px; border-radius: 4px; background: var(--line); z-index: 2; }
+
+@media (max-width: 640px) {
+  .xl { font-size: 14px; }
+  .xl-feed { padding: 14px 12px 20px; }
+  .xl-dock { padding: 0 10px 10px; }
+  .xl-brand__sub, .xl-model, .xl-agent__meta { display: none; }
+  .xl-pill { max-width: 46vw; }
+  .xl-user__bubble { max-width: 90%; }
+  .xl-report { padding-left: 0; }
+  .xl-runfoot { margin-left: 0; }
+  .xl-status__meta span:first-child { display: none; }
+  .xl-status { flex-wrap: nowrap; gap: 8px; }
+  .xl-status__who, .xl-budget__bar { display: none; }
+  .xl-status__txt { flex: 1 1 auto; }
+  .xl-stop { padding: 0 9px; }
+  .xl-card__sub { display: none; }
+  .xl-composer textarea { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xl *, .xl *::before, .xl *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+}
+
+/* draft ya faili ndani ya paneli kubwa */
+.xl-big-code > .xl-code { flex: 1; max-height: none !important; background: #fdfdfc; font-size: 12.6px; }
+.xl-big-code { display: flex; flex-direction: column; }
