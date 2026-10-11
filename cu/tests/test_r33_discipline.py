@@ -85,16 +85,51 @@ class TestTestsRunTracking(unittest.TestCase):
         st2.note_post_tool("Write", {"file_path": "/home/user/ws/src/LoginForm.tsx"})
         self.assertFalse(st2.tests_written)
 
-    def test_bash_ya_test_runner_inaweka_tests_run(self):
+    def test_kuita_test_command_pekee_hakuthibitishi_imeendeshwa(self):
         st = HookState()
         st.note_pre_tool("Bash", {"command": "npx playwright test"})
+        self.assertFalse(st.tests_run, "PreToolUse ni nia tu; bado hakuna matokeo")
+        st.note_post_tool("Bash", {"command": "npx playwright test"}, "12 passed")
         self.assertTrue(st.tests_run)
-        st2 = HookState()
-        st2.note_pre_tool("Bash", {"command": "npm test -- --run"})
-        self.assertTrue(st2.tests_run)
-        st3 = HookState()
-        st3.note_pre_tool("Bash", {"command": "npm install"})
-        self.assertFalse(st3.tests_run)
+
+    def test_test_runner_iliyofeli_haihesabiwi_kama_pass(self):
+        st = HookState()
+        cmd = "npm test -- --run"
+        st.note_pre_tool("Bash", {"command": cmd})
+        self.assertFalse(st.tests_run)
+        st.note_post_tool("Bash", {"command": cmd}, "Tests: 2 failed, 8 passed\nExit code 1")
+        self.assertFalse(st.tests_run)
+        st.note_bash_fail(cmd, "Exit code 1")
+        self.assertFalse(st.tests_run)
+
+
+    def test_mabadiliko_ya_code_baada_ya_build_yanaondoa_verification_green(self):
+        st = HookState()
+        st.note_post_tool("Bash", {"command": "npm run build"}, "Build completed successfully\nExit code 0")
+        self.assertTrue(st.verification_passed)
+        st.note_post_tool("Edit", {"file_path": "/home/user/ws/src/App.tsx"})
+        self.assertFalse(st.verification_passed, "build ya kabla ya edit haiwezi kuthibitisha code mpya")
+
+    def test_status_md_edit_haiifuti_verification_green(self):
+        st = HookState()
+        st.note_post_tool("Bash", {"command": "npm run build"}, "Build completed successfully\nExit code 0")
+        st.note_post_tool("Edit", {"file_path": "/home/user/ws/STATUS.md"})
+        self.assertTrue(st.verification_passed)
+
+    def test_verification_gate_inahitaji_command_iliyofaulu(self):
+        st = HookState()
+        st.note_tool_progress()
+        report = "RIPOTI YA MRADI: Kazi imekamilika. " + "maelezo " * 20
+        verdict = st.note_answer(report, plan_run=True)
+        self.assertIn("block_reason", verdict)
+        self.assertIn("VERIFICATION GATE", verdict["block_reason"])
+        st.note_pre_tool("Bash", {"command": "npm run build"})
+        self.assertFalse(st.verification_passed)
+        st.note_post_tool("Bash", {"command": "npm run build"}, "Build failed\nExit code 1")
+        self.assertFalse(st.verification_passed)
+        st.note_post_tool("Bash", {"command": "npm run build"}, "Build completed successfully")
+        self.assertTrue(st.verification_passed)
+        self.assertEqual(st.note_answer(report, plan_run=True), {})
 
     def test_ripoti_halali_bila_tests_kumaliza_inablockiwa(self):
         st = HookState()
@@ -109,6 +144,7 @@ class TestTestsRunTracking(unittest.TestCase):
         st = HookState()
         st.note_post_tool("Write", {"file_path": "/home/user/ws/tests/auth.spec.ts"})
         st.note_pre_tool("Bash", {"command": "npx playwright test"})
+        st.note_post_tool("Bash", {"command": "npx playwright test"}, "12 passed\nExit code 0")
         rep = ("RIPOTI YA MRADI: Kazi imekamilika. 🌐 Live: https://x.vercel.app · 📙 GitHub: "
                "https://github.com/org/repo · 📱 Majaribio: 12/12 zimepita · 📁 Files zipo.")
         self.assertEqual(st.note_answer(rep), {})

@@ -244,6 +244,7 @@ class TestR46BIntentProse(unittest.TestCase):
     def test_riposi_halisi_ndefu_inapita(self):
         st = HookState()
         st.note_tool_progress(); st.note_tool_progress()
+        st.verification_passed = True  # verification command imepita katika fixture hii
         ripoti = ("# Ripoti ya Mradi\n\n## 1. Muhtasari\n" + "SafariSmart imejengwa kikamilifu. " * 40)
         v = st.note_answer(ripoti, plan_run=True)
         self.assertEqual(v, {}, "ripoti halisi ndefu baada ya exec → mwisho halali")

@@ -58,6 +58,17 @@ UNCLOSED_THOUGHT_RX = _re.compile(r"<(?:thought|thinking)>[\s\S]*$", _re.I)
 # R33: test files (zilizoandikwa) na test runners (zilizoendeshwa)
 TEST_FILE_RX = _re.compile(r"(?:^|[\\/])(?:tests?|__tests__)[\\/]|\.spec\.(?:ts|tsx|js|jsx|mjs)$|\.test\.(?:ts|tsx|js|jsx|mjs)$|_test\.(?:go|py)$|(^|[\\/])test_[^\\/]*\.py$", _re.I)
 TEST_RUN_RX = _re.compile(r"\b(?:npx\s+(?:--yes\s+)?playwright\s+test|playwright\s+test|vitest|jest\b|pytest\b|npm\s+(?:run\s+)?test|npm\s+test|yarn\s+test|pnpm\s+(?:run\s+)?test|node\s+--test|go\s+test\b|cargo\s+test\b)\b", _re.I)
+# A plan-run needs a successful, observable verification command—not merely a promise or tool call.
+VERIFY_RUN_RX = _re.compile(
+    r"\b(?:npm\s+run\s+(?:build|lint|typecheck|check)|npm\s+(?:test|run\s+test)|"
+    r"pnpm\s+(?:run\s+)?(?:build|lint|typecheck|test|check)|yarn\s+(?:run\s+)?(?:build|lint|typecheck|test|check)|"
+    r"npx\s+(?:playwright\s+test|vitest(?:\s+run)?|tsc\s+--noEmit)|"
+    r"(?:pytest|vitest|jest|playwright\s+test|go\s+test|cargo\s+test|node\s+--test)\b|"
+    r"python(?:3)?\s+-m\s+(?:unittest|pytest))\b", _re.I)
+VERIFY_FAILURE_RX = _re.compile(
+    r"(?:exit[_ ]code\s*[:=]?\s*[1-9]\d*|exit(?:ed)?\s+with\s+(?:code|status)\s*[1-9]\d*|"
+    r"process\s+exited\s+with\s+code\s+[1-9]\d*|\b[1-9]\d*\s+failed\b|"
+    r"\btests?\s+failed\b|\bbuild\s+failed\b|\btype\s+check\s+failed\b|is[_ ]error\s*[:=]?\s*(?:true|1))", _re.I)
 # R33: ripoti halisi ya Kiswahili ina alama za sehemu zake; code-dump haina
 REPORT_MARK_RX = _re.compile(r"RIPOTI|Live Website|GitHub|Muhtasari|vercel\.app|github\.com|🌐|🐙|📱|📁|✅|🔗", _re.I)
 CODE_LINE_RX = _re.compile(r"^\s*(?:import\s|from\s+\S+\s+import|const\s|let\s|var\s|function\s|def\s|class\s|test\(|describe\(|it\(|await\s|return\s|export\s|console\.|print\(|}\s*\)|\{|\}$|//|#include|<\?php|<!DOCTYPE|<html)", _re.IGNORECASE)
@@ -527,6 +538,7 @@ class HookState:
         self.answers: list[str] = []
         self.pending: str = ""
         self.brake_fired = False
+        self.brake_reason: str = ""
         self.cont_blocks = 0
         self.advice_given_at: dict[str, int] = {}
         # R32.2: "empty stops" — model imesimama ikiwa na <thought> pekee / bila maudhui halisi.
@@ -548,6 +560,11 @@ class HookState:
         # R33: mabaki — tests ziliyoandikwa lazima ziendeshwe; ripoti si code-dump
         self.tests_written: bool = False
         self.tests_run: bool = False
+        # R48: verification is recorded only after a successful tool result. Calling a test/build
+        # command is not evidence that it passed. Plan runs cannot report success without this gate.
+        self.verification_passed: bool = False
+        self.verification_command: str = ""
+        self.verification_blocks: int = 0
         self.report_blocks: int = 0
         self.test_blocks: int = 0
         # R34-B: pages zinarejelea files zisizo tayari (0 bytes / haipo) — block max 2
@@ -555,6 +572,12 @@ class HookState:
 
     # ---- Bash
     def note_bash_fail(self, cmd: str, err: str) -> None:
+        # A failed verification attempt invalidates the latest verification result.
+        if VERIFY_RUN_RX.search(cmd or ""):
+            self.verification_passed = False
+            self.verification_command = (cmd or "")[:300]
+        if TEST_RUN_RX.search(cmd or ""):
+            self.tests_run = False
         fp = fingerprint_cmd(cmd)
         self.fail_streak[fp] = self.fail_streak.get(fp, 0) + 1
         self.fail_examples[fp] = (err or "")[-2000:]
@@ -665,6 +688,20 @@ class HookState:
                     "XMD NIDHAMU: unajaribu kumaliza run ya MPANGO bila kutekeleza HATA TOOL "
                     "MOJA. Hakuna kazi iliyothibitishwa. Anza sasa: soma STATUS.md/plan, kisha "
                     "itekeleze hatua kwa Bash/Write/Edit. Ripoti inakuja baada ya kazi halisi.")}
+            if not self.verification_passed:
+                self.verification_blocks += 1
+                if self.verification_blocks > 3:
+                    self.brake_fired = True
+                    self.brake_reason = "Verification haikupita/haikuthibitishwa baada ya nafasi 4; run imeishia BLOCKED/PARTIAL, si VERIFIED."
+                    return {"brake": True}
+                last = (f" Amri ya mwisho: {self.verification_command}." if self.verification_command else "")
+                return {"block_reason": (
+                    "XMD VERIFICATION GATE (R48): huwezi kumaliza run ya mpango bila ushahidi "
+                    "wa verification iliyofanikiwa. Endesha amri halisi inayofaa mradi huu "
+                    "(tests, build, typecheck au browser assertion), soma matokeo na rekebisha "
+                    "kosa lolote. Kuita command pekee hakutoshi; exit isiyofanikiwa haipiti. "
+                    "Usidai PASS ikiwa mazingira yamezuia verification—ripoti PARTIAL/BLOCKED wazi."
+                    + last)}
         # R32.2: jibu lenye <thought> pekee / text isiyofikia herufi 40 SI mwisho halali —
         # model (hasa lane za dharura) inaishisha "kimya" wakati kazi bado. Lazimisha aendelee.
         visible = self._visible_text(answer)
@@ -672,6 +709,7 @@ class HookState:
             self.empty_stops += 1
             if self.empty_stops > 6:
                 self.brake_fired = True
+                self.brake_reason = "Majibu matupu yamejirudia zaidi ya kikomo; hakuna maendeleo yanayoweza kuthibitishwa."
                 return {"brake": True}
             return {"block_reason": (
                 f"XMD NIDHAMU: umeisha na thought pekee bila kutekeleza chochote "
@@ -753,8 +791,9 @@ class HookState:
         if name in self.NAV_TOOLS:
             self.page_dirty = True
         if name == "Bash":
-            if TEST_RUN_RX.search(str(ti.get("command") or "")):
-                self.tests_run = True
+            # Do not mark tests/verification as run here: PreToolUse only means the model
+            # attempted a command. Success is recorded in note_post_tool after the result returns.
+            pass
         if name.endswith("browser_take_screenshot"):
             key = (self.page_url, self.viewport)
             if key == self.last_shot_key and not self.page_dirty:
@@ -766,8 +805,43 @@ class HookState:
                     "mpya inaruhusiwa TU baada ya kubadilisha page (navigate/click) au view (resize).")}
         return {}
 
-    def note_post_tool(self, name: str, ti: dict) -> None:
-        """PostToolUse (R33): track page/viewport, shot iliyofanikiwa, na test files zilizoandikwa."""
+    @staticmethod
+    def _response_text(response) -> str:
+        """Flatten tool response objects so explicit non-zero exits cannot count as verification."""
+        if response is None:
+            return ""
+        if isinstance(response, str):
+            return response
+        if isinstance(response, dict):
+            parts = []
+            for key in ("text", "output", "stdout", "stderr", "message", "content",
+                        "exit_code", "exitCode", "is_error", "status", "error"):
+                if key in response:
+                    parts.append(f"{key}: {HookState._response_text(response[key])}")
+            return "\n".join(p for p in parts if p)
+        if isinstance(response, (list, tuple)):
+            return "\n".join(HookState._response_text(x) for x in response)
+        return str(response)
+
+    def note_post_tool(self, name: str, ti: dict, response=None) -> None:
+        """PostToolUse: track UI evidence and mark verification only after a successful result."""
+        if name == "Bash":
+            cmd = str(ti.get("command") or "")
+            output = self._response_text(response)
+            failed = bool(VERIFY_FAILURE_RX.search(output))
+            if VERIFY_RUN_RX.search(cmd):
+                self.verification_command = cmd[:300]
+                self.verification_passed = not failed
+            if TEST_RUN_RX.search(cmd):
+                self.tests_run = not failed
+        elif name in ("Write", "Edit", "NotebookEdit"):
+            # A source/config change after a green check makes that check stale.
+            path = str(ti.get("file_path") or ti.get("path") or "").lower()
+            source_exts = (".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".json",
+                           ".css", ".scss", ".html", ".htm", ".vue", ".svelte", ".go", ".rs")
+            if path.endswith(source_exts) and not path.endswith(("/status.md", "status.md", "/readme.md", "readme.md")):
+                self.verification_passed = False
+                self.tests_run = False
         if name == "mcp__pw__browser_navigate":
             u = str(ti.get("url") or "")
             if u:
@@ -866,7 +940,7 @@ def build_xmd_hooks(state: HookState, em, workspace: str):
             name = hook_input.get("tool_name") or ""
             ti = hook_input.get("tool_input") or {}
             state.note_tool_progress()   # R32.2: tool ilifanikiwa — empty-stops zianza upya
-            state.note_post_tool(name, ti)   # R33: page/viewport/shot-success/tests-written
+            state.note_post_tool(name, ti, hook_input.get("tool_response") or hook_input.get("tool_result"))  # R33/R47: evidence after result
             if name == "Bash":
                 state.note_bash_ok(str(ti.get("command") or ""))
             elif name in ("Write", "Edit", "NotebookEdit"):
@@ -888,9 +962,10 @@ def build_xmd_hooks(state: HookState, em, workspace: str):
                 # Ripoti ya "NIMEKWAMA" inaandikwa na hook yenyewe (model haisikii stopReason)
                 try:
                     top = sorted(state.fail_streak.items(), key=lambda kv: -kv[1])[:3]
-                    why = (f"Model imesimama {state.empty_stops} mara mfululizo ikiwa na thought "
-                           "pekee bila kutekeleza kazi (stop tupu)." if state.empty_stops > 6 else
-                           "Jibu la mwisho limerudiwa karibu kwa usawa mara 3 — hakukuwa na maendeleo ya kutosha.")
+                    why = (state.brake_reason or
+                           (f"Model imesimama {state.empty_stops} mara mfululizo ikiwa na thought "
+                            "pekee bila kutekeleza kazi (stop tupu)." if state.empty_stops > 6 else
+                            "Jibu la mwisho limerudiwa karibu kwa usawa mara 3 — hakukuwa na maendeleo ya kutosha."))
                     lines = ["# NIMEKWAMA — Ripoti ya Brake (R32)", "",
                              f"*Wakati: {time.strftime('%Y-%m-%d %H:%M:%S')}*", "",
                              "## Kwa nini imesimama",
@@ -913,10 +988,10 @@ def build_xmd_hooks(state: HookState, em, workspace: str):
                 except Exception as e:
                     sys.stderr.write(f"[bridge] NIMEKWAMA ripoti: {e}\n")
                 em.emit("xmd_hook", kind="brake",
-                        text="Jibu lilelile ×3 — run imesimamishwa (ripoti: STATUS.md). "
-                             "▶ Endeleza inaanza na hali iliyohifadhiwa.")
+                        text=(state.brake_reason or "Jibu lilelile ×3 — hakuna maendeleo ya kutosha.")
+                             + " Run imesimamishwa; STATUS.md inaeleza hali halisi. ▶ Endeleza inaanza na hali iliyohifadhiwa.")
                 return {"continue": False,
-                        "stopReason": "XMD-BRAKE: jibu lilelile mara 3 — hakuna maendeleo."}
+                        "stopReason": "XMD-BRAKE: " + (state.brake_reason or "jibu lilelile mara 3 — hakuna maendeleo.")}
             if verdict.get("block_reason"):
                 # ushauri unamfika model kama reason ya kulazimisha kuendelea (si block ya kitu
                 # chochote — ni "endelea kazi" + ushauri wa nidhamu; max 2 kwa run)
