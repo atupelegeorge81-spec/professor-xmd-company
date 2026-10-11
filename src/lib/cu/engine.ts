@@ -17,6 +17,7 @@ import { InputFile } from "node-appwrite/file";
 import { appwriteConfigured, databases, DB, storage, SCREENSHOTS_BUCKET } from "@/lib/server/appwrite";
 import { publicFileUrl } from "@/lib/server/supabase"; // R42.1
 import { mirrorEvent, mirrorMapOf, restoreFromMirror, sandboxAlive } from "./mirror"; // R44: kiovu + liveness
+import { FEATURE_LIST_SANDBOX_PATH, featureListJson, featuresFromPlan } from "./features"; // R50-Awamu 1
 import { getPlanBySession, PROJECT_PLANS_COL, type ProjectPlanDoc } from "@/lib/server/plans";
 import { unpack } from "@/lib/server/packed";
 import {
@@ -499,6 +500,17 @@ export async function startComputerPhase(runner: Runner, hooks: CuHooks): Promis
     await sbx.files.write("/home/user/cu_bridge.py", bridgeSrc);
     await sbx.files.write("/home/user/cu_setup.sh", setupSrc);
     await sbx.files.write("/home/user/plan.md", plan.md);
+    // R50-Awamu 1: feature_list.json — harness inaitengeneza kutoka mpango KABLA agent kuanza
+    // (default-FAIL: state zote "pending", checks "not_run"). Agent anagusa state/evidence
+    // pekee; Awamu 2 inathibitisha. Resume: mirror inaweza kurudisha toleo la agent juu ya hili.
+    try {
+      const fl = featuresFromPlan(plan.md, { runId: String(runner.sessionId || runner.id || "") });
+      if (fl.features.length) {
+        await sbx.files.write(FEATURE_LIST_SANDBOX_PATH, featureListJson(fl));
+      }
+    } catch (e) {
+      console.warn(`[cu] feature_list.json: ${String(e).slice(0, 140)}`);
+    }
     const cuCfg = buildCuConfig() as Record<string, unknown>;
     const testPauseMs = Number(process.env.CU_TEST_QUOTA_PAUSE_MS) || 0;
     if (testPauseMs && !cu.pausedOnce) cuCfg.test_quota_pause_ms = testPauseMs; // traffic ya uongo (test ya auto-resume)

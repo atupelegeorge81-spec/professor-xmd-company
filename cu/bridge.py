@@ -25,6 +25,7 @@ import hashlib
 import json
 import os
 import re as _re
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -81,6 +82,20 @@ SKIP_REF_PREFIXES = ("http://", "https://", "//", "data:", "mailto:", "tel:", "#
 BUILD_DIRS = frozenset(("dist", "build", "out", ".next", ".output", ".cache", "coverage"))
 # R31-G4: snapshot ya workspace wakati wa pause (quota) — files zilirudike zero kesho
 SNAP_SKIP = {"node_modules", ".git", ".playwright-mcp", ".cache", ".venv", "__pycache__", ".npm", "playwright-report", ".codeium", ".vscode"}
+
+# ================================================================ R50 · Awamu 0.5 PREFLIGHT
+# Msingi (utafiti — Anthropic "Effective harnesses for long-running agents", Nov 2025): scaffold
+# ya mradi LAZIMA iweze kuendesha kwenye session yoyote; meta-files za harness zisiwe kizuizi.
+# Kosa halisi la SafariSmart: `npm create vite .` ilighairika kwa sababu workspace ilikuwa na
+# CLAUDE.md/STATUS.md — scaffold inataka directory TUPU. Suluhisho: stash kwa /tmp kabla ya
+# scaffold, restore mara MOJA baada (PostToolUse / Failure / Stop backstop).
+META_FILES = ("CLAUDE.md", "STATUS.md", "plan.md", "feature_list.json", "CONFLICTS.md")
+META_DIRS = (".xmd",)
+STASH_DIR = os.environ.get("XMD_META_STASH", "/tmp/xmd-meta")
+SCAFFOLD_RX = _re.compile(
+    r"\bnpm\s+(?:create|init)\b|\bnpx\s+(?:--yes\s+)?create|\bpnpm\s+create\b|\byarn\s+create\b"
+    r"|\bbun\s+create\b|\bgit\s+clone\b|\bdegit\b",
+    _re.I)
 
 
 def our_github_urls(txt: str, org: str, user: str) -> list:
@@ -569,6 +584,8 @@ class HookState:
         self.test_blocks: int = 0
         # R34-B: pages zinarejelea files zisizo tayari (0 bytes / haipo) — block max 2
         self.deliverable_blocks: int = 0
+        # R50-Awamu 0.5: preflight — meta-files zilizostashwa kabla ya scaffold [(src, dst)]
+        self.meta_stash: list[tuple[str, str]] = []
 
     # ---- Bash
     def note_bash_fail(self, cmd: str, err: str) -> None:
@@ -892,6 +909,89 @@ class HookState:
         return code / len(lines) > 0.7
 
 
+# ================================================================ R50 · Awamu 0.5 preflight helpers
+
+def stash_meta_files(workspace: str) -> list[tuple[str, str]]:
+    """R50-0.5: hamisha meta-files za harness → STASH_DIR (scaffold inahitaji directory tupu).
+
+    Inarudisha [(src, dst)] kwa restore. Haiathiri files nyingine zozote (src/, package.json…).
+    """
+    moved: list[tuple[str, str]] = []
+    try:
+        os.makedirs(STASH_DIR, exist_ok=True)
+    except Exception:
+        return moved
+    for name in META_FILES + META_DIRS:
+        src = os.path.join(workspace, name)
+        if not os.path.exists(src):
+            continue
+        dst = os.path.join(STASH_DIR, name)
+        try:
+            if os.path.isdir(dst) and not os.path.islink(dst):
+                shutil.rmtree(dst, ignore_errors=True)
+            elif os.path.exists(dst) or os.path.islink(dst):
+                os.remove(dst)
+            shutil.move(src, dst)
+            moved.append((src, dst))
+        except Exception:
+            pass
+    return moved
+
+
+def restore_meta_files(moved: list[tuple[str, str]]) -> int:
+    """R50-0.5: rudisha meta-files kwenye workspace. Ikiwa scaffold imeunda faili la jina lile —
+    la scaffold linabaki (haturudishi juu yake); mengine yanarudi. Inarudisha idadi."""
+    n = 0
+    for src, dst in moved or []:
+        try:
+            if not os.path.exists(dst) or os.path.exists(src):
+                continue
+            shutil.move(dst, src)
+            n += 1
+        except Exception:
+            pass
+    return n
+
+
+def preflight_pre_tool(state: HookState, workspace: str, name: str, ti: dict, em=None) -> dict:
+    """R50-0.5: Bash=scaffold → stash meta-files kabla. Inarudisha {'stashed': n, 'files': …} au {}."""
+    try:
+        if name != "Bash" or state.meta_stash:
+            return {}
+        cmd = str((ti or {}).get("command") or "")
+        if not cmd or not SCAFFOLD_RX.search(cmd):
+            return {}
+        moved = stash_meta_files(workspace)
+        if not moved:
+            return {}
+        state.meta_stash = moved
+        names = ", ".join(os.path.basename(s) for s, _ in moved)
+        if em is not None:
+            em.emit("xmd_hook", kind="preflight",
+                    text=(f"PREFLIGHT: meta-files {len(moved)} zimehifadhiwa (/tmp) kabla ya scaffold "
+                          f"— {names} — zinarudishwa mara moja baada."))
+        return {"stashed": len(moved), "files": names}
+    except Exception as e:
+        sys.stderr.write(f"[bridge] preflight pre: {e}\n")
+        return {}
+
+
+def preflight_post_tool(state: HookState, em=None) -> dict:
+    """R50-0.5: baada ya scaffold (hata ikifeli) — rudisha meta-files. Idempotent + backstop ya Stop."""
+    try:
+        if not state.meta_stash:
+            return {}
+        n = restore_meta_files(state.meta_stash)
+        state.meta_stash = []
+        if em is not None:
+            em.emit("xmd_hook", kind="preflight",
+                    text=f"PREFLIGHT: meta-files {n} zimerudishwa kwenye workspace.")
+        return {"restored": n}
+    except Exception as e:
+        sys.stderr.write(f"[bridge] preflight post: {e}\n")
+        return {}
+
+
 def build_xmd_hooks(state: HookState, em, workspace: str):
     """R32-C: hooks za SDK (ushauri + brake; HAKUNA block — idhini ya CEO 06-10 jioni).
 
@@ -912,6 +1012,7 @@ def build_xmd_hooks(state: HookState, em, workspace: str):
             name = hook_input.get("tool_name") or ""
             ti = hook_input.get("tool_input") or {}
             verdict = state.note_pre_tool(name, ti)
+            preflight_pre_tool(state, workspace, name, ti, em)   # R50-0.5: scaffold isighairike
             if verdict.get("deny"):
                 em.emit("xmd_hook", kind="shot_deny", text=str(verdict["deny"])[:500])
                 return {"decision": "block", "reason": verdict["deny"],
@@ -931,6 +1032,7 @@ def build_xmd_hooks(state: HookState, em, workspace: str):
                 state.note_bash_fail(cmd, err)
                 em.emit("xmd_hook", kind="fail", streak=state.fail_streak.get(fingerprint_cmd(cmd), 0),
                         command=str(cmd)[:300], text=str(err)[-400:])
+            preflight_post_tool(state, em)   # R50-0.5 backstop: scaffold iliyofeli pia inarudisha meta
         except Exception as e:
             sys.stderr.write(f"[bridge] hook bash_failed: {e}\n")
         return {}
@@ -956,6 +1058,7 @@ def build_xmd_hooks(state: HookState, em, workspace: str):
 
     async def on_stop(hook_input, tool_input, ctx):
         try:
+            preflight_post_tool(state, em)   # R50-0.5 backstop: plan.md LAZIMA iwe workspace kabla ya checks
             plan_run = os.path.exists(os.path.join(workspace, "plan.md"))   # R46-B
             verdict = state.note_answer(str(hook_input.get("last_assistant_message") or ""), plan_run=plan_run)
             if verdict.get("brake"):
@@ -1265,6 +1368,18 @@ async def main():
         except Exception as e:
             sys.stderr.write(f"[bridge] restore ya snapshot imekufa: {e}\n")
 
+    # R50-0.5 (bug-fix ya live): hooks za mpango (R46-B/R48) zinapima `workspace/plan.md` —
+    # lakini plan ilikuwa /home/user/plan.md PEKEE, kwa hiyo `plan_run` ilikuwa False KILA run
+    # (gate za mpango hazikuwaka kwenye production). Sasa plan.md inaingia workspace; resume ya
+    # mirror/snapshot ikirudisha toleo la agent, haturudishi juu yake.
+    try:
+        pm = os.path.join(a.workspace, "plan.md")
+        if not os.path.exists(pm):
+            with open(pm, "w", encoding="utf-8") as fh:
+                fh.write(plan_md)
+    except Exception as e:
+        sys.stderr.write(f"[bridge] plan.md workspace: {e}\n")
+
     em = Emitter(a.events_out, a.callback_url, a.callback_token, a.session, a.start_i)
 
     # ---- cuBrain (Gemini Swap Brain) — subprocess ya ndani (detached)
@@ -1321,10 +1436,21 @@ async def main():
     xmd_hooks = build_xmd_hooks(hook_state, em, a.workspace)
     search_server = build_search_tool(a.callback_url, a.callback_token, a.session)
 
+    # R50-Awamu 1: feature_list.json (harness inaitengeneza engine-side) — feature MOJA kwa wakati.
+    fl_path = os.path.join(a.workspace, "feature_list.json")
+    feature_line = (
+        f"FEATURE LIST (sheria ya kazi): `{fl_path}` ipo kwenye workspace — andika/kusoma hali yake. "
+        "Fanya feature MOJA kwa wakati; unaruhusiwa kubadilisha `state`/`attempts`/`evidence` PEKEE "
+        "(USIBADILISHE id/title/checks/command za feature — harness inathibitisha). Feature inakuwa "
+        "`passed` TU baada ya checks zake kupita kwa ushahidi halisi (command exit 0 au browser "
+        "assertion iliyoonekana), si kwa tamko.\n"
+        if os.path.exists(fl_path) else ""
+    )
     task_prompt = (
         f"TEKELEZA MPANGO KAZI HUU (\"{a.title}\") hatua kwa hatua, kwa ukamilifu.\n\n"
         "Kumbuka: Official Data ni sheria — nakili kwa usahihi; utekeleze Verification ya kila hatua.\n"
-        "Mwisho wa kila kitu, andika RIPOTI KAMILI YA KISWAHILI (live link + GitHub + majaribio + muundo + ukaguzi wa hatua).\n"
+        + feature_line
+        + "Mwisho wa kila kitu, andika RIPOTI KAMILI YA KISWAHILI (live link + GitHub + majaribio + muundo + ukaguzi wa hatua).\n"
         "─────────────────────────────────────────────\n\n"
         + plan_md
     )
