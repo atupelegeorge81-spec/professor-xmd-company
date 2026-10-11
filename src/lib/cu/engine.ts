@@ -463,6 +463,7 @@ export async function startComputerPhase(runner: Runner, hooks: CuHooks): Promis
             ["/home/user/shotlaw.py", "shotlaw.py"],
             ["/home/user/xmd_shot.py", "xmd_shot.py"],
             ["/home/user/xmd-law.md", "xmd-law.md"],
+            ["/home/user/features_verify.py", "features_verify.py"], // Awamu 2: harness gate
             ["/home/user/oh_bridge.py", "oh_bridge.py"],
             ["/home/user/cu_setup.sh", "setup.sh"],
           ]
@@ -1104,9 +1105,11 @@ export async function pauseComputerFromServer(runner: Runner, hooks: CuHooks | n
   if (hooks) {
     const t = resumeAt ? new Date(resumeAt).toLocaleTimeString("en-GB", { timeZone: "Africa/Dar_es_Salaam", hour12: false }) : "";
     hooks.blog("warning", `⏸️ XMD Computer imepumzishwa — ${reason}. Workspace inahifadhiwa...`);
+    // R51: onyesha matumizi halisi muda huu — user ajue requests/tokens ngapi zimekwisha
+    const used = `requests ${cu.usage?.requests ?? 0} · tokens ${(cu.usage?.tokens ?? 0).toLocaleString("en-US")}`;
     hooks.addChip(resumeAt
-      ? `⏸️ XMD Computer imepumzika (${reason}) — itajaribiwa tena yenyewe ${t}.`
-      : `⏸️ XMD Computer imepumzishwa (${reason}) — hali ya workspace imehifadhiwa; ▶ Resume inarejesha pale pale.`);
+      ? `⏸️ XMD Computer imepumzika (${reason}) — itajaribiwa tena yenyewe ${t}. (${used} tayari)`
+      : `⏸️ XMD Computer imepumzishwa (${reason}) — hali ya workspace imehifadhiwa; ▶ Resume inarejesha pale pale. (${used} tayari)`);
   }
 
   // (1) SNAPSHOT: tar.gz ya workspace kutoka sandbox hai (bridge yenyewe hushiriki quota-path

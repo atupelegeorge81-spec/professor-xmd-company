@@ -27,10 +27,12 @@ import time
 
 # --- reuse kabisa ya miundombinu ya bridge.py (Emitter/files/snapshot/regex zilezile) ---
 import bridge as B  # noqa: E402  (Emitter, files_tree, make_snapshot, restore_snapshot, …)
+import features_verify  # noqa: E402  (R51-Awamu2: harness ndiye mamlaka ya feature states)
 import lanes  # noqa: E402
 import oh_router  # noqa: E402
 import shotlaw  # noqa: E402
-from oh_util import action_command, build_objective, first_words, read_shot_b64, shots_pending
+from oh_util import (_extract_steps, action_command, build_objective, first_words,
+                     read_shot_b64, shots_pending)
 
 BASE_TS = B.BASE_TS
 
@@ -307,7 +309,9 @@ async def main_async() -> None:
     fl_path = os.path.join(a.workspace, "feature_list.json")
     feature_line = (
         f"FEATURE LIST: `{fl_path}` ipo — sasisha state/evidence pekee; feature = passed TU "
-        "kwa ushahidi halisi (exit 0/assertion), si tamko.\n"
+        "kwa ushahidi halisi (exit 0/assertion + artifact), si tamko. MWISHO WA KAZI, HARNESS "
+        "ITA-RE-RUN checks zote yenyewe (default-FAIL) — madai ya uongo yataanguka hapo; weka "
+        "evidence (browser/file yenye artifact HALISI disk) kwa kila assertion check.\n"
         if os.path.exists(fl_path) else ""
     )
     resume_part = ("\n\nRESUME CONTEXT (hali halisi ya run iliyokatizwa):\n" + a.resume_note) if a.resume_note else ""
@@ -330,7 +334,13 @@ async def main_async() -> None:
     )
 
     judge_objective = build_objective(a.title, plan_md)
-    max_iter = int(os.environ.get("XMD_GOAL_MAX_ITER", "10") or 10)
+    # Iterations za judge zinafuatana na UKUBWA WA MPANGO (si 10 daima): mikakati mirefu
+    # inahitaji nafasi zaidi ya kujirekebisha; env inaweza kuvulalia (override).
+    try:
+        _steps_n = len(_extract_steps(plan_md))
+    except Exception:
+        _steps_n = 0
+    max_iter = int(os.environ.get("XMD_GOAL_MAX_ITER") or min(25, max(6, _steps_n)))
 
     try:
         conversation.send_message(first_message)
@@ -367,6 +377,24 @@ async def main_async() -> None:
         sys.stderr.write(traceback.format_exc())
         status = "error"
 
+    # ------------------------------------------------------------- HARNESS GATE (Awamu 2)
+    # Kabla ya "done" kutangazwa: harness ina-RE-RUN checks zote za feature_list yenyewe.
+    # Agent aweza kudanganya kwenye transcript — haawezi kudanganya exit codes (default-FAIL).
+    harness_note = ""
+    try:
+        if os.path.exists(features_verify.list_path(a.workspace)):
+            verdict = features_verify.verify_all(a.workspace)
+            s = features_verify.summary_line(verdict)
+            em.emit("features", ok=bool(verdict and verdict.get("ok")),
+                    passed=(verdict or {}).get("passed", 0), total=(verdict or {}).get("total", 0),
+                    failures=(verdict or {}).get("failures", []), note=first_words(s, 200))
+            if verdict and not verdict.get("ok") and status == "done":
+                status = "stuck"
+                harness_note = "\n\n⚠️ HARNESS (thibitisho ya uhakika): " + s
+                em.emit("error", message="harness: features hazijathibitishwa — " + first_words(s, 160))
+    except Exception as e:
+        sys.stderr.write(f"[oh_bridge] harness gate: {type(e).__name__}: {str(e)[:160]}\n")
+
     # ------------------------------------------------------------- mwisho
     maybe_throws_shots()
     try:
@@ -379,6 +407,8 @@ async def main_async() -> None:
     em.emit("usage_total", prompt=pt, completion=ct, total=pt + ct)
 
     report = last_assistant_text or "(hakuna ripoti — agent hakutuma ujumbe wa mwisho)"
+    if harness_note:
+        report += harness_note
     partial = status != "done"
     em.emit("finish", report=report[:24000], partial=partial, status=status)
 

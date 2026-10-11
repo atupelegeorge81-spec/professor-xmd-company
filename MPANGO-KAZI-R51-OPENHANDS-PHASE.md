@@ -217,3 +217,29 @@ Verified ku-import ndani ya sandbox: `openhands.sdk.hooks` (HookConfig/HookDefin
 `python3 /tmp/seatrial.py [goal]` — driver haipo repo (ina keys); reconstruct it from MPANGO huu.
 
 **Kinachofuata (Awamu 2):** features-verification (feature_list.json hook), judge-iteration tuning kwa mpango mrefu, Supabase pausing-ya-budget meter chip ("requests used"), critic option (D2 bado wazi).
+
+---
+
+## §0.8 AWAMU 2 ✅ IMEKAMILIKA (2026-10-11 usiku) — HARNESS NI MAMLAKA
+
+**Kilichojengwa:**
+1. `cu/features_verify.py` (stdlib) — verifier ya feature_list.json: command checks Hure-RUN wenyewe
+   (shlex, bila shell, timeout 120s, key-envs hazipitishwi); assertion checks zinahitaji evidence ya
+   browser/file yenye **artifact HALISI disk** — "Nimeona" bila faili = default-FAIL. Waandishi:
+   `harness_verdict` kwenye faili + CLI (`python3 features_verify.py --ws …`) kwa diagnostics.
+2. `oh_bridge` harness GATE: baada ya run (na judge), `verify_all` huamua — agent akidanganya,
+   status inageuka `stuck` + ripoti ina onyo la harness. "Done" sasa inahitaji ridhaa 3:
+   **agent + judge + harness**.
+3. Judge iterations ni ya mpango-sahihi: `min(25, max(6, steps))`; override `XMD_GOAL_MAX_ITER`.
+4. Engine pause chip inaonyesha matumizi: `(requests N · tokens M tayari)`.
+5. File list ya engine ku-upload imeonyesha `features_verify.py` (sea trial #2 ilikuta hilo).
+
+**Testi:** python **230/230** (12 mpya za verifier — zimekasa bug 2 halisi: evidence-cap ya append-only
+na file-list missing kwenye uploads), tsc 0, vitest cu 70/70.
+
+**SEA TRIAL YA MWISHO (live):** judge `complete score=1.0` + harness `2/2 ✓` + `run_end done`
+(~490s, lanes zikizunguka: laguna 429→cooldown 130s→switch).
+
+**Inayobakia (si-blocking, za baadaye):** critic ya APIBasedCritic (D2 — judge inatosha kwa sasa),
+requests-meter chip kwenye finale cards, browser-evidence hooks (madai ya "Nimeona" ya agent
+yaingiliane na shotlaw registry moja kwa moja).
