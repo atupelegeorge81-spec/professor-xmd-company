@@ -56,9 +56,21 @@ export function fastWeightOf(lane: Lane): number {
   if (lane.provider === "gemini") return Math.max(0.01, (lane.tier === "flash" ? 0.9 : 1.2) - (lane.rank ?? 0) * 0.01);
   return { groq: 0.8, xkiro: 0.4, unorouter: 0.1, openrouter: 0.05 }[lane.provider];
 }
-/** Uzito unaotumika kweli: njia ya haraka ikiombwa → fastWeightOf; vinginevyo darasa la kawaida (haijabadilika). */
-export function laneWeight(cls: WorkClass, lane: Lane, fast?: boolean): number {
-  return fast ? fastWeightOf(lane) : weightOf(cls, lane);
+/** R49 · MPANGO KAZI (agizo la Mkuu 11-10): sehemu inayoandika Mpango Kazi wa Agent inaruhusiwa kutumia
+ *  PROVIDERS HIZI PEKEE, kwa mpangilio huu:
+ *    1) XKiro qwen — akaunti ZOTE 2 (XTROUTER_API_KEY_OPTIMUS_1 / _2) zinaruhusiwa; ndiyo ya kwanza kujaribiwa.
+ *    2) UnoRouter (nemotron-3-ultra-550b · space-bunny-alpha) na OpenRouter (nemotron-3-ultra-550b:free)
+ *       — zinaingia XKiro ISIPOKUWA na nafasi.
+ *  Gemini HAIORODHESHWI (ni haraka, lakini haifanyi reasoning ya kutosha kwa mpango — inakosea);
+ *  Groq pia haipo. broker inafunga hii kwa `planWork: true` — filter ya provider (si uzito pekee),
+ *  kwa hiyo hata weights zikibadilika baadaye Gemini haitaingia kwenye mpango. */
+export const PLAN_PROVIDERS: ProviderId[] = ["xkiro", "unorouter", "openrouter"];
+const PLAN_WEIGHTS: Record<string, number> = { xkiro: 1, unorouter: 0.85, openrouter: 0.7 };
+export const planWeightOf = (lane: Lane): number => PLAN_WEIGHTS[lane.provider] ?? 0;
+
+/** Uzito unaotumika kweli: mpango → planWeightOf; njia ya haraka → fastWeightOf; vinginevyo darasa la kawaida. */
+export function laneWeight(cls: WorkClass, lane: Lane, fast?: boolean, plan?: boolean): number {
+  return plan ? planWeightOf(lane) : fast ? fastWeightOf(lane) : weightOf(cls, lane);
 }
 
 const gemLimits = (lane: Lane) => (lane.tier === "flash" ? { rpd: GEMINI_FLASH_RPD, rpm: GEMINI_FLASH_RPM } : { rpd: GEMINI_LITE_RPD, rpm: GEMINI_LITE_RPM });
@@ -187,8 +199,8 @@ export function admit(lane: Lane, estIn: number, wantOut: number, now = Date.now
  * Mpangilio wa darasa ndio mkuu (NORMAL inabaki XKiro mpaka iishe kweli — admission inaiweka kando); headroom
  * inaamua kati ya akaunti za provider mmoja (mf. XKiro 1 vs 2) na afya inashusha lane zinazoyumba.
  */
-export function score(lane: Lane, cls: WorkClass, headroom: number, stickyLaneId?: string, fast?: boolean): number {
-  const w = laneWeight(cls, lane, fast);
+export function score(lane: Lane, cls: WorkClass, headroom: number, stickyLaneId?: string, fast?: boolean, plan?: boolean): number {
+  const w = laneWeight(cls, lane, fast, plan);
   if (!w) return 0;
   const sticky = stickyLaneId === lane.id ? 0.05 : 0;
   return w * (0.85 + 0.15 * headroom) * healthScore(lane.id) + sticky;

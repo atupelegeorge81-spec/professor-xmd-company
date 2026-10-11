@@ -702,7 +702,7 @@ async function run(runner: Runner) {
       msgId: string,
       answer: boolean,
       maxTok = 2000,
-      o?: { cls?: WorkClass; priority?: Priority; critical?: boolean; effort?: "low" | "medium" | "high" },
+      o?: { cls?: WorkClass; priority?: Priority; critical?: boolean; effort?: "low" | "medium" | "high"; planWork?: boolean },
     ): Promise<string> => {
       await gate(agent.name);
       // R20: agizo la <think> ni kwa lanes zisizo na reasoning channel tu (XKiro, Gemini) — tazama thinkDirective.ts
@@ -712,7 +712,7 @@ async function run(runner: Runner) {
       const endWait = () => { if (waitAct) { activityEnd(waitAct); waitAct = null; } };
       const mkRun = () => brokerRun({
         agentId: agent.id, purpose: answer ? "board-turn" : "board-decide", cls: o?.cls ?? (answer ? "normal" : "light"),
-        messages: sent as never, maxOut: maxTok, priority: o?.priority ?? "live", reasoning: true, critical: o?.critical, effort: o?.effort,
+        messages: sent as never, maxOut: maxTok, priority: o?.priority ?? "live", reasoning: true, critical: o?.critical, effort: o?.effort, planWork: o?.planWork,
         onWait: (w) => {
           if (w && !waitAct) { waitAct = activityStart(`${agent.name} anasubiri nafasi…`); blog("info", `⏳ ${agent.name}: anasubiri nafasi ya lane (${w.cls})…`); }
           if (!w) endWait();
@@ -3213,6 +3213,7 @@ Do NOT restate the objection; ANSWER the question. Under 120 words.
       ).join("\n\n");
       const planCtx = `PROJECT BRIEF: "${runner.project}"\n\n${facts ? `${factsBlock()}\n\n` : ""}${sysFiles.length ? `${dataFilesBlock(sysFiles)}\n\n` : ""}=== LOCKED DECISIONS + MINI-REPORTS (the Board has finished — this is the source of truth) ===\n${miniLines}`;
 
+      blog("info", "📋 Mpango Kazi · lanes pekee: XKiro qwen (akaunti 1·2 = keys za Optimus) → UnoRouter/OpenRouter (nemotron-3-ultra-550b · space-bunny-alpha) — Gemini/Groq haziruhusiwi (R49).");
       for (const p of PLAN_PARTS) {
         if (p.nums.every((n) => planCollected[n])) {
           blog("info", `♻️ Endeleza: Kipande ${p.label} cha Mpango Kazi tayari kimeandikwa kamili — kinarukwa.`);
@@ -3256,7 +3257,7 @@ RULES:
           planMsgId,
           true,
           24000,
-          { critical: true },
+          { critical: true, planWork: true }, // R49: Mpango Kazi — XKiro qwen (1·2) → UnoRouter/OpenRouter; Gemini/Groq haziruhusiwi
         );
         setItemContent(planMsgId, planPart);
         bcast({ type: "msg_done", id: planMsgId });
@@ -3292,7 +3293,7 @@ Rewrite ONLY the affected sections (same headings, same structure), with every v
           fixMsgId,
           true,
           8000,
-          { critical: true },
+          { critical: true, planWork: true }, // R49: repair ya Mpango Kazi — lanes zilezile za plan
         );
         setItemContent(fixMsgId, fixed);
         bcast({ type: "msg_done", id: fixMsgId });

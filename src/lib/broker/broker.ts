@@ -19,7 +19,7 @@ import { nextUtcMidnight, noteRoute, takeUnoSlot } from "@/lib/server/usageLedge
 import { allLanes, type Lane } from "./lanes";
 import { classOf, estimateTokens, type Priority, type WorkClass } from "./estimate";
 import { classify, reroutable, type Verdict } from "./errors";
-import { admit, laneWeight, score, SCARCE } from "./policy";
+import { admit, laneWeight, PLAN_PROVIDERS, score, SCARCE } from "./policy";
 import { isReasoningDump, repairHead } from "@/lib/board/turnText";
 import { bstate, recordOutcome, wakeAll, type Reservation } from "./state";
 import { idleGuard } from "./idle";
@@ -57,6 +57,9 @@ export interface AcquireSpec {
   /** tuma include_reasoning kwa lanes zinazoitambua (streams za thinking) */
   reasoning?: boolean;
   allow?: ProviderId[];
+  /** R49 · MPANGO KAZI: lanes za policy.PLAN_PROVIDERS PEKEE (XKiro qwen akaunti 1·2 → UnoRouter/OpenRouter
+   *  = nemotron-3-ultra-550b · space-bunny-alpha). Gemini/Groq HAZIRUHUSIWI kabisa kwenye mpango (agizo la Mkuu). */
+  planWork?: boolean;
   /** R18: kazi muhimu (script ya mwisho, ripoti) — inaruhusiwa kutumia requests za Flash zilizohifadhiwa (FLASH_RESERVE) */
   critical?: boolean;
   /** R21 · njia ya haraka (title/scope/agenda): lanes zinapangwa kwa kasi ya kujibu — policy.fastWeightOf */
@@ -116,18 +119,19 @@ function clientFor(lane: Lane, key: string): OpenAI {
 
 type Pick = { lane: Lane; maxTokens: number } | { waitUntil: number } | { exhausted: number | null };
 
-function pick(cls: WorkClass, estIn: number, maxOut: number, agentId: string, excluded: Set<string>, deadline: number, allow?: ProviderId[], now = Date.now(), critical = false, fast = false): Pick {
+function pick(cls: WorkClass, estIn: number, maxOut: number, agentId: string, excluded: Set<string>, deadline: number, allow?: ProviderId[], now = Date.now(), critical = false, fast = false, planWork = false): Pick {
   const S = bstate();
   const sticky = S.sticky.get(agentId);
   const stickyId = sticky && now - sticky.at < 10 * 60_000 ? sticky.laneId : undefined;
-  const lanes = allLanes().filter((l) => !excluded.has(l.id) && laneWeight(cls, l, fast) > 0 && (!allow || allow.includes(l.provider)));
+  // R49: planWork = Mpango Kazi — providers zilizoruhusiwa PEKEE (Gemini/Groq zinaondolewa kabla ya score yoyote).
+  const lanes = allLanes().filter((l) => !excluded.has(l.id) && (!planWork || PLAN_PROVIDERS.includes(l.provider)) && laneWeight(cls, l, fast, planWork) > 0 && (!allow || allow.includes(l.provider)));
   let best: { lane: Lane; maxTokens: number; s: number; w: number } | null = null;
   const upcoming: { at: number; w: number }[] = [];
   for (const lane of lanes) {
     const a = admit(lane, estIn, maxOut, now, { critical });
-    const w = laneWeight(cls, lane, fast);
+    const w = laneWeight(cls, lane, fast, planWork);
     if (a.ok) {
-      const s = score(lane, cls, a.headroom, stickyId, fast);
+      const s = score(lane, cls, a.headroom, stickyId, fast, planWork);
       if (!best || s > best.s) best = { lane, maxTokens: a.maxTokens, s, w };
     } else if (a.readyAt != null) upcoming.push({ at: a.readyAt, w });
   }
@@ -184,7 +188,7 @@ export function brokerRun(spec: AcquireSpec): Run {
       for (;;) {
         if (spec.signal?.aborted) throw abortError();
         const now = Date.now();
-        const p = pick(cls, estIn, spec.maxOut, spec.agentId, excluded, deadline, spec.allow, now, !!spec.critical, !!spec.fast);
+        const p = pick(cls, estIn, spec.maxOut, spec.agentId, excluded, deadline, spec.allow, now, !!spec.critical, !!spec.fast, !!spec.planWork);
         if ("lane" in p) {
           if (waited) spec.onWait?.(null);
           return dispatch(p.lane, p.maxTokens);
@@ -199,7 +203,7 @@ export function brokerRun(spec: AcquireSpec): Run {
         if (PRIO_DELAY[prio] && Date.now() < p.waitUntil) await new Promise((r) => setTimeout(r, PRIO_DELAY[prio]));
         if (Date.now() >= deadline + PRIO_DELAY[prio]) {
           // dirisha limeisha: jaribio la mwisho bila kusubiri
-          const last = pick(cls, estIn, spec.maxOut, spec.agentId, excluded, 0, spec.allow, Date.now(), !!spec.critical, !!spec.fast);
+          const last = pick(cls, estIn, spec.maxOut, spec.agentId, excluded, 0, spec.allow, Date.now(), !!spec.critical, !!spec.fast, !!spec.planWork);
           if ("lane" in last) { spec.onWait?.(null); return dispatch(last.lane, last.maxTokens); }
           throw new BrokerExhaustedError("waitUntil" in last ? last.waitUntil : "exhausted" in last ? last.exhausted : null, cls);
         }
