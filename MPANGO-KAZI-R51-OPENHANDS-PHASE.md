@@ -188,3 +188,32 @@ Verified ku-import ndani ya sandbox: `openhands.sdk.hooks` (HookConfig/HookDefin
 - **D1 — Lanes za OpenHands CU:** nibakiie mpangilio wa leo (Gemini flash kwanza → XKiro → OpenRouter → Groq → Uno kama dharura) au qwen-first kama mjadala? *Mapendekezo: wa leo — ni wa requests-lifted, Gemini ni cheap; qwen anabaki kwenye mnyororo.*
 - **D2 — Critic OFF by default v1?** (mapendekezo: ndiyo — run_goal judge inatosha kuanza)
 - **D3 — Purge ya anthropic/lmnr kwenye setup (mode=openhands)?** (mapendekezo: ndiyo — "claude aondoke sandbox" kiukweli)
+
+---
+
+## §0.7 AWAMU 1 ✅ IMEJENGWA + SEA TRIAL YA LIVE (2026-10-11 jioni)
+
+**Imejengwa kikweli (si mipango):**
+1. `cu/oh_bridge.py` — bridge ya OpenHands SDK yenye CONTRACT SAWA na cu/bridge.py (run_start → exec/shot/usage → finish → run_end + paused_quota). Engine haibadilishi kitu chochote kwa events.
+2. `cu/oh_router.py` — **LaneRouter(RandomRouter)**: MECHANISM ni yao (RouterLLM inadelegate tools/streaming kwa active_llm, select_llm() ni extension point YAO kwa maandishi yao), POLICY ni yetu (lanes.py + retry-loop + wait-cap 300s → AllLanesDead → paused_quota path).
+3. `cu/shotlaw.py` + `cu/xmd_shot.py` — sheria ya screenshot (1/page/view, re-shot tu chanzo kikibadilika, registry `.xmd/shots.json`, CLI re-execs kwenye venv).
+4. `cu/xmd-law.md` — sheria zinakoingia AGENTS.md + ujumbe wa kwanza.
+5. Engine: `CU_AGENT_BACKEND` (default **openhands**, `claude` = legacy haifutwi), pgrep/pkill zinashika zote mbili, setup.sh gate, **stall-aware cap** (chip-ya-uongo fix: cap inatekana tu baada ya window nzima bila events), **snapshot FRESH kila pause** (`!cu.snapshot` skip imeondolewa).
+
+**Sea trial ya live (E2B, keys halisi, plan ya hatua 2):**
+- ✅ PASS (judge off, dev): site imejengwa, curl `VERIFICATION_OK`, xmd_shot `{"ok":true}` → registry → event `shot` → UI, run_end **done**, 163s.
+- ✅ JUDGE (run_goal) inafanya kazi: judge-pool ilitumika kweli; agent ilipotia step ya screenshot, judge akakataa "complete" yenye uongo — iterations zikaisha kwa **capped** → run_end **stuck (kweli, si "done ya uongo")**. Hii ndiyo matibabu ya ugonjwa wa R46 moja kwa moja.
+- **Lanes LIVE:** katika runs 3: gemini-flash (5xx→cooldown 65s), kimi-k3, deepseek-v4-flash (429→cooldown), v4.1-flash, laguna, super-120b, north-mini-code — policy inabadilisha lane haraka, kwa UKIMYA (UI haiona makoso).
+- Maktaba ya events imehesabika: 10+ `usage` (model+account, hakuna KEY), `usage_total` (token halisi za LLMResponse.metrics).
+
+**Masomo ya SDK v1.46 (yatokanayo na makosa halisi — wasijirudie):**
+- `Agent(tools=[Tool(name=...)])`: SPECS si instances; majina yanaregister TU baada ya `import openhands.tools.<m>` (side-effect); jina = `'terminal'|'file_editor'|'task_tracker'` (si `TerminalTool`).
+- TerminalTool hukataa heredoc/multi-line ("Cannot execute multiple commands at once") — agent anaelekezwa: faili = FileEditorTool, amri = && pekee.
+- Lanes dhaifu wakati mwingine huandika tool-call kama TEXT (`{"action":...}`) — inhijacked kama ujumbe: tunaificha (bridge inachuja) + judge ndiye mlinzi wa mwisho.
+- `RouterLLM` inafanya `random.choice` per KWETE call — augur.io: llms_for_routing inaweza kubadilishwa (assign safe), SDK inapiga log INFO za __getattr__ (harmless).
+- `conversation.state.status` HAUPO kwenye API thabiti — production hutumia JUDGE (run_goal), si hii.
+
+**Kuendesha trial tena:** env zinahitajika (E2B + UNOROUTER/OPENROUTER/GEMINI ×N), kisha
+`python3 /tmp/seatrial.py [goal]` — driver haipo repo (ina keys); reconstruct it from MPANGO huu.
+
+**Kinachofuata (Awamu 2):** features-verification (feature_list.json hook), judge-iteration tuning kwa mpango mrefu, Supabase pausing-ya-budget meter chip ("requests used"), critic option (D2 bado wazi).

@@ -6,16 +6,37 @@
 LOG=/tmp/cu-setup.log
 say() { echo "[setup] $*"; }
 
-# 1) Claude Agent SDK (python) — wheel inakuja na Claude Code CLI bundled
-if ! /code/openhands-venv/bin/python -c "import claude_agent_sdk" >/dev/null 2>&1; then
-  say "pip install claude-agent-sdk..."
-  if /code/openhands-venv/bin/pip install -q claude-agent-sdk >>"$LOG" 2>&1; then
-    say "claude-agent-sdk ✓"
+# 1) Agent backend — R51: CU_AGENT_BACKEND=openhands (default) au claude (legacy)
+if [ "${CU_AGENT_BACKEND:-openhands}" = "claude" ]; then
+  # Claude Agent SDK (python) — wheel inakuja na Claude Code CLI bundled
+  if ! /code/openhands-venv/bin/python -c "import claude_agent_sdk" >/dev/null 2>&1; then
+    say "pip install claude-agent-sdk..."
+    if /code/openhands-venv/bin/pip install -q claude-agent-sdk >>"$LOG" 2>&1; then
+      say "claude-agent-sdk ✓"
+    else
+      say "⚠️ pip imeshindikana — angalia $LOG"
+    fi
   else
-    say "⚠️ pip imeshindikana — angalia $LOG"
+    say "claude-agent-sdk ipo tayari ✓"
   fi
 else
-  say "claude-agent-sdk ipo tayari ✓"
+  # OpenHands mode: SDK inakuja na template (probe-imara). Hakuna pip za claude.
+  if OPENHANDS_SUPPRESS_BANNER=1 /code/openhands-venv/bin/python -c "import openhands.sdk" >/dev/null 2>&1; then
+    say "openhands SDK ✓"
+  else
+    say "❌ openhands SDK haipo kwenye /code/openhands-venv — bridge itaripoti kosa"
+  fi
+  # xmd_shot.py (sheria ya screenshots) inahitaji playwright ya PYTHON kwenye venv hiyo
+  if ! /code/openhands-venv/bin/python -c "import playwright" >/dev/null 2>&1; then
+    say "pip install playwright (python)..."
+    if /code/openhands-venv/bin/pip install -q playwright >>"$LOG" 2>&1; then
+      say "playwright(py) ✓"
+    else
+      say "⚠️ playwright(py) haikuwekwa — screenshots zitaripoti 'playwright-missing'"
+    fi
+  else
+    say "playwright(py) ipo tayari ✓"
+  fi
 fi
 
 # 2) gh CLI (gh repo create inahitajika kwa workflow ya mwisho)

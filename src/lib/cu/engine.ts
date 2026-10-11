@@ -36,6 +36,9 @@ import type { BoardEvent, LogEntry } from "@/lib/types";
 export const CU_TEMPLATE = process.env.CU_E2B_TEMPLATE || "professor-xmd-browser-v3";
 /** R31-G: kikomo cha ku-subiri awamu ya CU (run() haiachi stream open milele). */
 const CU_HARD_CAP_MS = Number(process.env.CU_HARD_CAP_MS) || 30 * 60 * 1000;
+// R51-Awamu 1: backend ya CU agent — "openhands" (default: SDK native + lanes.py policy + judge)
+// au "claude" (legacy Gemini Swap Brain). Mabadiliko ni env tu — contract ya events haigezuki.
+const CU_AGENT_BACKEND = (process.env.CU_AGENT_BACKEND || "openhands").toLowerCase() === "claude" ? "claude" : "openhands";
 /** R38-RC1: bridge hai lakini hakuna tukio (stream ya LLM imekwama) → onyo (⅓) kisha pause+auto-resume.
  *  Matukio ya kawaida (think_delta/exec) yanafika kila sekunde chache; kutokuwepa kwa dakika 15 = kifo hakika. */
 export const CU_STALL_PAUSE_MS = Number(process.env.CU_STALL_PAUSE_MS) || 15 * 60 * 1000;
@@ -366,14 +369,13 @@ async function getSandbox(cu: CuRunState): Promise<any> {
 function bridgeCommand(o: {
   title: string; session: string; token: string; startI: number; resumeNote: string; restoreUrl?: string;
 }): string {
-  const env = [
+  const common = [
     `cd /home/user && bash /home/user/cu_setup.sh;`,
     `PATH=/home/user/.local/bin:/home/user/node_modules/.bin:/usr/local/bin:$PATH`,
     `PLAYWRIGHT_BROWSERS_PATH=/home/user/.cache/ms-playwright`,
-    `ANTHROPIC_BASE_URL=http://127.0.0.1:4010`,
-    `ANTHROPIC_API_KEY=sk-xmd-local`,
-    `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`,
     `PYTHONUNBUFFERED=1`,
+    // R51: setup.sh inajua backend ipi iandae (claude pip vs oh import-check)
+    `CU_AGENT_BACKEND=${CU_AGENT_BACKEND}`,
     // R32: URL ya search tool (MCP in-process ya bridge inapiga route ya Koyeb kwanza,
     // fallback SearXNG direct). Hakuna token budget — agizo la CEO 06-10 usiku.
     `CU_SEARCH_URL=${q(CU_PUBLIC_URL + "/api/boardroom/cu-search")}`,
@@ -382,9 +384,8 @@ function bridgeCommand(o: {
     `GITHUB_ORG=${q(GITHUB_ORG)}`,
     `GITHUB_USERNAME=${q(GITHUB_USER)}`,
     `VERCEL_TOKEN=${q(process.env.CU_VERCEL_TOKEN || process.env.VERCEL_TOKEN || "")}`,
-  ].join(" ");
-  const args = [
-    `/home/user/cu_bridge.py`,
+  ];
+  const sharedArgs = [
     `--task-file /home/user/plan.md`,
     `--title ${q(o.title.slice(0, 300))}`,
     `--session ${q(o.session)}`,
@@ -392,9 +393,20 @@ function bridgeCommand(o: {
     `--callback-url ${q(CU_PUBLIC_URL + CU_EVENT_PATH)}`,
     `--callback-token ${q(o.token)}`,
   ];
-  if (o.resumeNote) args.push(`--resume-note ${q(o.resumeNote.slice(0, 3000))}`);
-  if (o.restoreUrl) args.push(`--restore-url ${q(o.restoreUrl)}`);
-  return `${env} ${VENV_PY} ${args.join(" ")}`;
+  if (o.resumeNote) sharedArgs.push(`--resume-note ${q(o.resumeNote.slice(0, 3000))}`);
+  if (o.restoreUrl) sharedArgs.push(`--restore-url ${q(o.restoreUrl)}`);
+  if (CU_AGENT_BACKEND === "openhands") {
+    // R51: OpenHands SDK native — hakuna ANTHROPIC_*, hakuna brain (lanes.py ndani ya oh_bridge)
+    const env = [...common, `OPENHANDS_SUPPRESS_BANNER=1`].join(" ");
+    return `${env} ${VENV_PY} /home/user/oh_bridge.py ${sharedArgs.join(" ")}`;
+  }
+  const env = [
+    ...common,
+    `ANTHROPIC_BASE_URL=http://127.0.0.1:4010`,
+    `ANTHROPIC_API_KEY=sk-xmd-local`,
+    `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`,
+  ].join(" ");
+  return `${env} ${VENV_PY} /home/user/cu_bridge.py ${sharedArgs.join(" ")}`;
 }
 
 /* ============================ PHASE: kuanza / kuendelea ============================ */
@@ -407,10 +419,22 @@ export async function startComputerPhase(runner: Runner, hooks: CuHooks): Promis
   // R31-G4: awamu MPYA = promise MPYA (ile ya run iliyopita imesharesolve — bila hii,
   // awaitPhase ingerudi MARA MOJA na run ingeisha huku bridge bado unaendelea)
   cu.phaseDone = new Promise<void>((res) => { cu.phaseResolve = res; });
-  const awaitPhase = () => Promise.race([
-    cu.phaseDone ?? Promise.resolve(),
-    new Promise<void>((r) => setTimeout(r, CU_HARD_CAP_MS)),
-  ]);
+  // R51-fix (chip-ya-uongo): cap ni DEAD-MAN tu. CU ikiwa ina events HALISI za hivi karibuni
+  // (lastRealAt — huvuka kila tukio isipokuwa 'usage'), cap ya wall-clock haifai kuisitisha;
+  // subiri window nyingine. Kielelezo cha run halisi >30min haikatizwi tena.
+  const awaitPhase = async () => {
+    for (;;) {
+      let resolved = false;
+      await Promise.race([
+        (cu.phaseDone ?? Promise.resolve()).then(() => { resolved = true; }),
+        new Promise<void>((r) => setTimeout(r, CU_HARD_CAP_MS)),
+      ]);
+      if (resolved || cu.done) return;
+      const lastReal = (cu as any).lastRealAt || cu.lastEventAt || cu.startedAt || 0;
+      if (Date.now() - lastReal < CU_HARD_CAP_MS) continue; // hai — subiri window nyingine
+      return; // dead-man: window NZIMA ya cap bila tukio lolote halisi
+    }
+  };
 
   // ── divider + card ya kuanza (baada ya card ya MWISHO kabisa ya Board — memory imekamilika)
   hooks.bcast({ type: "cu", cu: { type: "divider" } });
@@ -426,9 +450,29 @@ export async function startComputerPhase(runner: Runner, hooks: CuHooks): Promis
   const resume = cu.maxI > 0;
   if (resume) hooks.blog("info", `♻️ XMD Computer inaendelea (resume) — events ${cu.maxI} zilizoongozwa nazo zipo.`);
 
-  let brainSrc: string, bridgeSrc: string, setupSrc: string;
+  // R51: file set inategemea backend (claude=brain+bridge; oh=bridge+lanes*+oh_bridge+sheria)
+  let cuFiles: Array<[string, string]> = []; // [sandboxPath, src]
   try {
-    [brainSrc, bridgeSrc, setupSrc] = await Promise.all([readCuFile("brain.py"), readCuFile("bridge.py"), readCuFile("setup.sh")]);
+    const pairs: Array<[string, string]> = // [sandboxPath, repoName]
+      CU_AGENT_BACKEND === "openhands"
+        ? [
+            ["/home/user/bridge.py", "bridge.py"], // oh_bridge ina-import 'bridge' (Emitter/files/snapshot)
+            ["/home/user/lanes.py", "lanes.py"],
+            ["/home/user/oh_util.py", "oh_util.py"],
+            ["/home/user/oh_router.py", "oh_router.py"],
+            ["/home/user/shotlaw.py", "shotlaw.py"],
+            ["/home/user/xmd_shot.py", "xmd_shot.py"],
+            ["/home/user/xmd-law.md", "xmd-law.md"],
+            ["/home/user/oh_bridge.py", "oh_bridge.py"],
+            ["/home/user/cu_setup.sh", "setup.sh"],
+          ]
+        : [
+            ["/home/user/cu_brain.py", "brain.py"],
+            ["/home/user/cu_bridge.py", "bridge.py"],
+            ["/home/user/cu_setup.sh", "setup.sh"],
+          ];
+    const srcs = await Promise.all(pairs.map(([, n]) => readCuFile(n)));
+    cuFiles = pairs.map(([p, ], i) => [p, srcs[i]]);
   } catch (e: any) {
     cuError(runner, hooks, `Faili za engine (cu/) hazipatikani kwenye server: ${String(e?.message || e).slice(0, 140)}`);
     return;
@@ -463,7 +507,7 @@ export async function startComputerPhase(runner: Runner, hooks: CuHooks): Promis
       }
       // (2) bridge bado hai? → USIANZISHE Nyingine (double-run ni sumu)
       try {
-        const r = await sbx.commands.run("pgrep -f '[c]u_bridge.py' >/dev/null 2>&1 && echo ALIVE || echo DEAD", { timeoutMs: 15_000 });
+        const r = await sbx.commands.run("pgrep -f '[c]u_bridge\\.py|[o]h_bridge\\.py' >/dev/null 2>&1 && echo ALIVE || echo DEAD", { timeoutMs: 15_000 });
         bridgeAlive = String(r?.stdout || "").includes("ALIVE");
       } catch { /* */ }
       // run_end ipo events.jsonl + bridge IMEKUFA → awamu inakamilika kutoka replay
@@ -499,9 +543,7 @@ export async function startComputerPhase(runner: Runner, hooks: CuHooks): Promis
     }
 
     // kila run: files fresh (mfumo wa XMD — sandbox isibaki na code ya zamani)
-    await sbx.files.write("/home/user/cu_brain.py", brainSrc);
-    await sbx.files.write("/home/user/cu_bridge.py", bridgeSrc);
-    await sbx.files.write("/home/user/cu_setup.sh", setupSrc);
+    for (const [p, src] of cuFiles) await sbx.files.write(p, src);
     await sbx.files.write("/home/user/plan.md", plan.md);
     // R50-Awamu 1: feature_list.json — harness inaitengeneza kutoka mpango KABLA agent kuanza
     // (default-FAIL: state zote "pending", checks "not_run"). Agent anagusa state/evidence
@@ -548,7 +590,7 @@ export async function startComputerPhase(runner: Runner, hooks: CuHooks): Promis
     // bridge MPYA yenyewe + bash yake mara tu baada ya launch)
     if ((cu as any).__zombie) {
       hooks.blog("warning", "🧟 Bridge ya pause ni zombie (run_end yake imeshatoka) — inauawa, run MPYA inaanzishwa.");
-      await sbx.commands.run("pkill -9 -f '[c]u_bridge.py' || true", { timeoutMs: 15_000 }).catch(() => {});
+      await sbx.commands.run("pkill -9 -f '[c]u_bridge\\.py|[o]h_bridge\\.py' || true", { timeoutMs: 15_000 }).catch(() => {});
     }
     const handle = await sbx.commands.run(`bash -lc ${q(cmd)}`, {
       background: true, timeoutMs: 60 * 60 * 1000,
@@ -1069,8 +1111,10 @@ export async function pauseComputerFromServer(runner: Runner, hooks: CuHooks | n
 
   // (1) SNAPSHOT: tar.gz ya workspace kutoka sandbox hai (bridge yenyewe hushiriki quota-path
   //     pekee — hapa ni server inayopanga). Imefungwa kwa muda (≤2dk) ili pause isighairi kuisha.
+  // R51-fix (stale-snapshot): TUMIA YA FRESH KILA WAKATI. `!cu.snapshot` iliruka pause ya
+  //     pili+ ikirejesha snapshot ya zamani — resume ikapata kazi ya zamani (data loss).
   const sbx = cu.sandbox;
-  if (sbx && !cu.snapshot) {
+  if (sbx) {
     try {
       const r = await Promise.race([
         sbx.commands.run(
