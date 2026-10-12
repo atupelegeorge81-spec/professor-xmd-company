@@ -7,7 +7,7 @@ export interface FinaleInput {
   project: string;
   brief: string;
   run: MilestonesRunState;
-  /** optional: muhtasari ya ledger (kutoka boardRunner) — tayari iko twhole anthology cheque */
+  /** optional: muhtasari ya ledger (kutoka boardRunner) — anthology nzima ya maamuzi */
   ledgerText?: string;
   /** ripoti za Computer za kila milestone (M1-build-report.md) kama zipo */
   computerReports?: Record<string, string>;
@@ -60,6 +60,7 @@ export function buildMilestonesFinalReport(inp: FinaleInput): FinaleOutput {
     ``,
     `**Hali ya mwisho:** ${st.label} — ${st.detail}.`,
     `**Kilicho ombwa dhidi ya kilichogandwa:** milestones ${ms.length} ilipangwa; ${ms.filter((m) => (MAX_PERMS as readonly string[]).includes(msStates(m.id)?.status || "")).length} zimesainiwa.`,
+    ...(run.liveCheck ? [`**Live smoke check (C10):** ${run.liveCheck.ok ? `✅ OK (${run.liveCheck.status})` : run.liveCheck.url ? `⚠️ status ${run.liveCheck.status}` : "⚠️ haijafanyika (URL haipo)"}${run.liveCheck.url ? ` — ${run.liveCheck.url}` : ""}`] : []),
   ].join("\n");
 
   /* ---- 2: milestones na HALI (+ raundi) ---- */
@@ -67,12 +68,24 @@ export function buildMilestonesFinalReport(inp: FinaleInput): FinaleOutput {
     const s = msStates(m.id);
     const lanesUsed = (s?.lanesUsed || []).length;
     const fallbackLanes = (s?.lanesUsed || []).filter((l) => l.fallback).length;
-    return `| ${m.id} | ${m.title} | ${m.phase} | **${s?.status || "—"}** | ${s?.round ?? 0}/${s?.maxRounds || 10} | lanes ${lanesUsed}${fallbackLanes ? ` (fallback ${fallbackLanes})` : ""} |`;
+    return `| ${m.id} | ${m.title} | ${m.phase} | **${s?.status || "—"}**${s?.signedTag ? ` · \`${s.signedTag}\`` : ""} | ${s?.round ?? 0}/${s?.maxRounds || 10} | lanes ${lanesUsed}${fallbackLanes ? ` (fallback ${fallbackLanes})` : ""} |`;
   });
+  // C9 (10.4): lanes zilizotumika KWA JINA per milestone — mwamuzi wa export anaona wadhifa wa lanes
+  const laneDetail = ms
+    .map((m) => {
+      const lanes = msStates(m.id)?.lanesUsed || [];
+      if (!lanes.length) return null;
+      const by = new Map<string, number>();
+      for (const l of lanes) by.set(l.lane, (by.get(l.lane) || 0) + 1);
+      return `- ${m.id}: ${[...by.entries()].map(([ln, n]) => `\`${ln}\` ×${n}`).join(", ")}`;
+    })
+    .filter((x): x is string => !!x);
   const s2 = [
     `| Milestone | Kichwa | Awamu | Hali | Raundi | Lanes |`,
     `|---|---|---|---|---|---|`,
     ...msRows,
+    ``,
+    ...(laneDetail.length ? [`**Lanes zilizotumika kwa jina (10.4):**`, ...laneDetail] : []),
     ``,
     `_Hatari za hali:_ \`CAP_REACHED\` = kikomo cha raundi 10 kimefikiwa; \`BLOCKED/HAUJENGWA\` = imesimama (sababu zimeorodheshwa); \`SIGNED_OFF_WITH_WAIVERS\` = minor zimepewa waivers rasmi.`,
   ].join("\n");

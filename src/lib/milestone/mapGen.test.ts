@@ -1,7 +1,7 @@
 // P2 acceptance: ramani halali kwa N=10/15/20; ramani batili 6 tofauti zinakataliwa;
 // LLM ikishindwa mara 3 → fallback inafanya kazi.
 import { describe, expect, it } from "vitest";
-import { generateMilestoneMap, mapPrompt } from "./mapGen";
+import { extendMilestoneMap, generateMilestoneMap, mapPrompt } from "./mapGen";
 import { validateMilestoneMap } from "./schemas";
 
 const agendaOf = (n: number) => Array.from({ length: n }, (_, i) => ({ index: i + 1, item: `Kipengele ${i + 1}` }));
@@ -110,5 +110,69 @@ describe("P2 · generateMilestoneMap", () => {
     expect(system).toMatch(/1\.\.N/);
     expect(system).toContain("reviewMode");
     expect(user).toContain("1. Kipengele 1");
+  });
+});
+
+import type { MilestoneMap, MilestonesRunState } from "./types";
+import { fallbackMilestoneMap } from "./schemas";
+
+function mkMap(n: number): MilestoneMap {
+  // ramani ya fallback (code-made) — ainaile ya "mid-run" ya haraka
+  return fallbackMilestoneMap(n, "sess-c5", "visual");
+}
+
+function statesFor(ids: string[], statusOf: (id: string) => string): Pick<MilestonesRunState, "states"> {
+  const states: Record<string, any> = {};
+  for (const id of ids) states[id] = { id, status: statusOf(id), round: 0, maxRounds: 10, currentStepId: `${id}.D.1`, startedAt: "", updatedAt: "", lanesUsed: [] };
+  return { states: states as MilestonesRunState["states"] };
+}
+
+describe("C5 · extendMilestoneMap (4.2.7)", () => {
+  it("zilizosainiwa HAZIGUSWI; zilizobaki hukatishwa upya kufunika agenda mpya", () => {
+    const old = mkMap(10); // M1(1–3) M2(4–6) M3(7–9) M4(10)
+    // fallback: n=10 → k=3, per=4 → M1(1-4) M2(5-8) M3(9-10)
+    const run = statesFor(old.milestones.map((m) => m.id), (id) => (id === "M1" ? "SIGNED_OFF" : "VERIFYING"));
+    const r = extendMilestoneMap(old, run, 14);
+    expect(r).not.toBeNull();
+    const { map } = r!;
+    // M1 imesalimika nako
+    const m1 = map.milestones.find((m) => m.id === "M1")!;
+    expect(m1.agendas).toEqual({ from: 1, to: 4 });
+    // mpangilio unafunika mpaka 14 bila pengo
+    let cur = 1;
+    for (const m of map.milestones) { expect(m.agendas.from).toBe(cur); cur = m.agendas.to + 1; }
+    expect(cur).toBe(15);
+    // ids mpya hazigongani na za kale
+    const ids = map.milestones.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(map.totalAgendas).toBe(14);
+    // zilizoondolewa ni zile zisizosainiwa
+    expect(r!.removed.sort()).toEqual(["M2", "M3"]);
+    expect(r!.added.length).toBeGreaterThan(0);
+  });
+
+  it("hakuna signed → ramani mpya nzima hufunika 1..N mpya", () => {
+    const old = mkMap(8);
+    const run = statesFor(old.milestones.map((m) => m.id), () => "BUILDING");
+    const r = extendMilestoneMap(old, run, 12);
+    expect(r).not.toBeNull();
+    expect(r!.map.milestones[0].agendas.from).toBe(1);
+    expect(r!.map.milestones.at(-1)!.agendas.to).toBe(12);
+  });
+
+  it("newTotal <= oldMap.totalAgendas → null (hakuna cha kufanya)", () => {
+    const old = mkMap(10);
+    const run = statesFor(old.milestones.map((m) => m.id), () => "VERIFYING");
+    expect(extendMilestoneMap(old, run, 10)).toBeNull();
+    expect(extendMilestoneMap(old, run, 7)).toBeNull();
+  });
+
+  it("muunganiko halali kupitia validateMilestoneMap (startFrom > newTotal → null)", () => {
+    const old = mkMap(2); // M1(1-2)
+    const run = statesFor(["M1"], () => "SIGNED_OFF");
+    // total mpya 3, lakini signed inafikia 2 tu → kpana? startFrom=3 <= 3 → inapaswa iandike M2(3-3)
+    const r = extendMilestoneMap(old, run, 3);
+    expect(r).not.toBeNull();
+    expect(r!.map.milestones.at(-1)!.agendas).toEqual({ from: 3, to: 3 });
   });
 });

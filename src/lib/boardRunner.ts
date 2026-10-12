@@ -3787,6 +3787,16 @@ KWENYE SEHEMU YA 4 (Maamuzi): taja KILA agenda ya Ledger (1 hadi ${agenda.length
             hooks: { blog, addChip, bcast: (evt) => bcast(evt as any), persist },
             callLLM: async (agentId, messages, maxTokens) => auxChatWithRotation(agentId, messages, maxTokens, { cls: "heavy", purpose: "milestone-plan" }),
             deps: msSlices.deps,
+            // C5 (4.2.7): idadi halisi ya agenda sasa — ikizidi map.totalAgendas ramani inapanuliwa muda wa run
+            agendaCount: fbr.length,
+            // C4 (7.6): wakaguzi wanaweza kutafuta ukweli wa nje (web) mara moja kabla ya hukumu
+            searchFn: async (q: string) => {
+              try {
+                const rs = await searchWeb(q).catch(() => searchWebDirect(q));
+                const lines = (rs || []).slice(0, 8).map((r) => `- ${r.title}: ${(r.content || "").slice(0, 300)} (${r.url})`);
+                return lines.join("\n") || "(utafutaji hakuna matokeo)";
+              } catch { return "(utafutaji haujafanikiwa — jila kwa ushahidi uliotolewa)"; }
+            },
           });
           if (host.done) {
             runner.finale = { ...(runner.finale || {}), milestonesDone: true, computer: true };

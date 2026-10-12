@@ -31,7 +31,25 @@ export interface JudgeCallOpts {
   waitNote?: (msg: string) => void;  // sign-off-wait maelezo
   effort?: "low" | "medium" | "high";
   maxTokens?: number;
+  /** C4 (7.6): mkaguzi anaweza kutafuta ukweli wa nje (web) MARA MOJA kabla ya hukumu. */
+  search?: (q: string) => Promise<string>;
 }
+
+/** C4 (7.6): pass ya kwanza ikirudisha "__sq" (searchQuery ya LLM) na utafutaji ukopo (o.search) —
+ *  tafuta MARA MOJA kisha uliza tena na matokeo (pass ya mwisho). Utafutaji ukishindwa → jibu la awali. */
+async function secondPassWithSearch<T>(callTag: string, agentId: string, system: string, user: string, first: (T & { __sq?: string | null }) | null, parse: (x: unknown) => { ok: boolean; value?: T; errors?: string[] }, o?: JudgeCallOpts): Promise<T | null> {
+  if (!first) return null;
+  const sq = (first as { __sq?: string | null }).__sq;
+  delete (first as { __sq?: string | null }).__sq;
+  if (!sq || !o?.search) return first;
+  try {
+    const results = (await o.search(sq)).slice(0, 2500);
+    const again = await llmJson<T>(`${callTag}.search2`, agentId, system,
+      user + `\n\nMATOKEO YA UTAFUTAJI WA WEB kwa "${sq}":\n${results}\n\nSasa toa jibu LA MWISHO kwa JSON (HUTOWEKA searchQuery tena).`, parse, o);
+    return again || first;
+  } catch { return first; }
+}
+
 
 export async function judgeText(callName: string, agentId: string, system: string, user: string, o?: JudgeCallOpts & { maxTokens?: number; effort?: "low" | "medium" | "high" }): Promise<string | null> {
   for (let t = 0; t < 4; t++) {
@@ -73,21 +91,28 @@ async function llmJson<T>(callName: string, agentId: string, system: string, use
 /* ============ Uchambuzi wa mkaguzi (Raundi 0) ============ */
 
 export function llmAnalyse(o?: JudgeCallOpts) {
-  return async (reviewerId: string, inp: { milestone: Milestone; evidence: EvidencePack; run: MilestonesRunState }): Promise<AnalystOutput> => {
+  return async (reviewerId: string, inp: { milestone: Milestone; evidence: EvidencePack; run: MilestonesRunState; ocb?: string }): Promise<AnalystOutput> => {
     const system = [
       `Wewe ni mkaguzi ${reviewerId} wa timu (kama Ultron kwa muundo/UX, Vextron kwa frontend, Megatron kwa backend, Cybertron kwa QA).`,
       "Kagua ushahidi uliotolewa. Andika uchambuzi kwa ufupi na DEFECTS KAMA JSON.",
       "Muundo: { reviewer, findings, defects: [{id na D khali, milestoneId, severity, title, expected, actual, evidence:[], area, foundInRound, reportedBy:[wewe]}], suggestions: [{title, detail}] }",
       "Kila defect: severity blocker|major|medium|minor. Usisode ange dalili bila ushahidi (picha S-###, kipimo C-###, amri au DOM). Usitapatie alama PASS shangwe — wewe ni mkaguzi.",
+      'C4 UTAFUTAJI: ukihitaji kuthibitisha ukweli wa nje (kanuni ya framework/library/version, n.k.) kabla ya hukumu, weka "searchQuery": "swali moja" katika JSON — utafutaji utafanywa mara moja kisha utaulizwa tena.',
     ].join("\n");
     const user = [
+      ...(inp.ocb ? [inp.ocb, ""] : []),
       `MILESTONE: ${inp.milestone.id} — ${inp.milestone.title} (mode ${inp.milestone.reviewMode})`,
       "",
       "USHAHIDI:",
       evidenceDigest(inp.evidence),
     ].join("\n");
-    const out = await llmJson<AnalystOutput>(`${inp.milestone.id}.R0.${reviewerId}.analyse`, reviewerId, system, user, (x) => validateAnalystOutput(x), { ...o, effort: "high" });
-    return out || { reviewer: reviewerId, findings: "(uchambuzi ulishindwa baada ya majaribio — makosa yatarejewa)", defects: [], suggestions: [] };
+    const out = await llmJson<AnalystOutput>(`${inp.milestone.id}.R0.${reviewerId}.analyse`, reviewerId, system, user, (x) => {
+      const v = validateAnalystOutput(x);
+      if (v.ok) (v.value as unknown as Record<string, unknown>).__sq = typeof (x as Record<string, unknown>)?.searchQuery === "string" ? String((x as Record<string, unknown>).searchQuery) : null;
+      return v;
+    }, { ...o, effort: "high" });
+    const final = await secondPassWithSearch<AnalystOutput>(`${inp.milestone.id}.R0.${reviewerId}.analyse`, reviewerId, system, user, out as (AnalystOutput & { __sq?: string | null }) | null, (x) => validateAnalystOutput(x), o);
+    return final || { reviewer: reviewerId, findings: "(uchambuzi ulishindwa baada ya majaribio — makosa yatarejewa)", defects: [], suggestions: [] };
   };
 }
 
@@ -127,26 +152,38 @@ export function llmDiscussAndMerge(o?: JudgeCallOpts) {
 export function llmVerifyRound(o?: JudgeCallOpts) {
   return async (inp: {
     cos: ChangeOrder[]; evidence: EvidencePack; run: MilestonesRunState; milestone: Milestone; round: number; reviewers: string[];
+    ocb?: string; roundHeader?: string;
   }): Promise<Record<string, Record<string, ReviewSignature>>> => {
     const out: Record<string, Record<string, ReviewSignature>> = {};
     for (const co of inp.cos) {
       out[co.id] = {};
       for (const rv of inp.reviewers) {
         const system = [
-          `Wewe ni mkaguzi ${rv}. Mwangaza ya mushahara raundi ${inp.round}/10. Evalue CO: imetekelezwa kikamilifu? JIBU: JSON pekee { "verdict": "PASS"|"FAIL"|"PARTIAL", "note": "…" }`,
+          `Wewe ni mkaguzi ${rv}. Mwangaza ya mushahara raundi ${inp.round}/10. Evalue CO: imetekelezwa kikamilifu? JIBU: JSON pekee { "verdict": "PASS"|"FAIL"|"PARTIAL", "note": "…" }. C4: ukihitaji kuthibitisha ukweli wa nje kabla ya FAIL, weka "searchQuery": "swali" — utafutaji utafanywa mara moja.`,
         ].join("\n");
         const user = [
+          ...(inp.ocb ? [inp.ocb, ""] : []),
+          ...(inp.roundHeader ? [`${inp.roundHeader}`, ""] : []),
           `CO: ${JSON.stringify({ id: co.id, current: co.current, desired: co.desired, visionNote: co.visionNote, acceptance: co.acceptance })}`,
           "",
           "USHAHIDI mpya (baada ya marekebisho):",
           evidenceDigest(inp.evidence),
         ].join("\n");
-        const res = await llmJson<{ verdict: "PASS" | "FAIL" | "PARTIAL"; note?: string }>(`${inp.milestone.id}.R${inp.round}.${rv}.verify.${co.id}`, rv, system, user, (x) => {
-          const v = String((x as any)?.verdict || "").toUpperCase();
+        type VerdictOut = { verdict: "PASS" | "FAIL" | "PARTIAL"; note?: string };
+        type VerdictRaw = VerdictOut & Record<string, unknown>;
+        const parseV = (x: unknown): { ok: boolean; value?: VerdictRaw; errors?: string[] } => {
+          const v = String((x as Record<string, unknown>)?.verdict || "").toUpperCase();
           if (!["PASS", "FAIL", "PARTIAL"].includes(v)) return { ok: false, errors: ["verdict inahitajika (PASS/FAIL/PARTIAL)"] };
-          return { ok: true, value: { verdict: v as any, note: String((x as any)?.note || "") } };
-        }, { ...o, effort: "high" });
-        out[co.id][rv] = res ? { reviewer: rv, verdict: res.verdict, note: res.note } : { reviewer: rv, verdict: "FAIL", note: "uthibitisho ulishindwa kupata majibu" };
+          const val: VerdictRaw = { verdict: v as VerdictRaw["verdict"], note: String((x as Record<string, unknown>)?.note || "") };
+          val.__sq = typeof (x as Record<string, unknown>)?.searchQuery === "string" ? String((x as Record<string, unknown>).searchQuery) : null;
+          return { ok: true, value: val };
+        };
+        const res = await llmJson<VerdictRaw>(`${inp.milestone.id}.R${inp.round}.${rv}.verify.${co.id}`, rv, system, user, parseV, { ...o, effort: "high" });
+        // C4: search kwa FAIL pekee (PASS/PARTIAL hazitafutiwi maneno ya ziada)
+        const fin = (res && res.verdict === "FAIL")
+          ? (await secondPassWithSearch<VerdictRaw>(`${inp.milestone.id}.R${inp.round}.${rv}.verify.${co.id}`, rv, system, user, res, parseV, o)) || res
+          : res ? (() => { delete (res as { __sq?: string | null }).__sq; return res; })() : null;
+        out[co.id][rv] = fin ? { reviewer: rv, verdict: fin.verdict, note: fin.note } : { reviewer: rv, verdict: "FAIL", note: "uthibitisho ulishindwa kupata majibu" };
       }
     }
     return out;

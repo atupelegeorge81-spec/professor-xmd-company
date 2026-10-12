@@ -49,8 +49,9 @@ export interface OrchestratorDeps {
   /** Ipp. P4: playright harness — fake kwa tests sasa hivi */
   collectEvidence: (milestone: Milestone, round: number, rep: { report?: string }, run: MilestonesRunState) => Promise<EvidencePack>;
 
-  /** Uchambuzi wa mkaguzi (Raundi 0; P5 real) — anarudisha AnalystOutput (validated) kwa kila mkaguzi */
-  analyse: (reviewerId: string, inp: { milestone: Milestone; evidence: EvidencePack; run: MilestonesRunState }) => Promise<AnalystOutput>;
+  /** Uchambuzi wa mkaguzi (Raundi 0; P5 real) — anarudisha AnalystOutput (validated) kwa kila mkaguzi.
+   *  §6.1.2: ocb INAINGIZWA kwenye call ya uchambuzi (lakini online unit ipo kwa fake deps). */
+  analyse: (reviewerId: string, inp: { milestone: Milestone; evidence: EvidencePack; run: MilestonesRunState; ocb?: string }) => Promise<AnalystOutput>;
 
   /** Mjadala wa timu + Optimus merge → CO mpya (P5 real). Inapaswa kurudisha CO (validated extra pamoja na defects mpya iliyo-live) */
   discussAndMerge: (inp: {
@@ -60,7 +61,7 @@ export interface OrchestratorDeps {
   /** Uthibitisho wa raundi r (P6 real): kila mkaguzi anaondoa sahihi kwa kila CO — {coId: {reviewerId: sig}} */
   verifyRound: (inp: {
     cos: ChangeOrder[]; evidence: EvidencePack; run: MilestonesRunState; milestone: Milestone; round: number;
-    reviewers: string[];
+    reviewers: string[]; ocb?: string; roundHeader?: string;
   }) => Promise<Record<string, Record<string, ReviewSignature>>>;
 
   /** Ngazi ya 2+: Optimus anaandika upya CO (concrete) (P6 real) */
@@ -74,6 +75,14 @@ export interface OrchestratorDeps {
 
   /** Usimamizi wa vision-wait (10.3.b): SIGN-OFF isiyokuwa na vision inasubiri; default ans subiri milele (false = sitaki kusubiri) */
   awaitVisionLane?: (reason: string) => Promise<boolean>;
+
+  /** §6.1.2: OCB kwa wakaguzi/hukumu (code-built; hostRun inaipeleka). Fake deps haipatikani bila ya hili. */
+  ocbFor?: (roleId: string, step: string, round?: number) => string;
+
+  /** §4.11/§12: kusanya git tag milestone-Mk + push (harness, si Computer). Fake deps haipatikani bila ya hili. */
+  signOffCommit?: (milestoneId: string) => Promise<{ tag: string | null; pushed: boolean; note?: string }>;
+  /** C8 (PENDEKEZO §7.3, env MS_BROWSER_EVAL=1): sign-off ya visual/mixed inahitaji kipimo cha BROWSER halisi kilicho PASS. */
+  browserEvalRequired?: boolean;
 
   persistNow?: () => Promise<void>;
 }
@@ -226,7 +235,7 @@ export async function runMilestonePipeline(
     note(`🔍 Raundi 0: ${reviewers.map((r) => r).join(" + ")} wanachambua KWA KUJITEGEMEA…`);
     const analyses: AnalystOutput[] = [];
     for (const rv of reviewers) {
-      const out = await deps.analyse(rv, { milestone: m, evidence, run });
+      const out = await deps.analyse(rv, { milestone: m, evidence, run, ocb: deps.ocbFor?.(rv, `ukaguzi wa Raundi 0: uchambuzi wa kujitegemea (${m.id} ${m.title})`) });
       analyses.push(out);
     }
     // defects zinazong'aa kutoka kwa uchambuzi wawili
@@ -278,7 +287,8 @@ export async function runMilestonePipeline(
     }
 
     const rStepPrefix = `${milestoneId}.R${round}`;
-    note(`🔧 ${milestoneId} — ${buildRoundHeader({ ...st, round }, run.defects)}`);
+    const roundHeaderTxt = buildRoundHeader({ ...st, round }, run.defects);
+    note(`🔧 ${milestoneId} — ${roundHeaderTxt}`);
     run.states[milestoneId].round = round;
     st.round = round;
 
@@ -348,6 +358,8 @@ export async function runMilestonePipeline(
     run.evidence[`${milestoneId}.R${round}`] = evidence;
     const verifyRes: Record<string, Record<string, ReviewSignature>> = await deps.verifyRound({
       cos: repCos, evidence, run, milestone: m, round, reviewers,
+      ocb: deps.ocbFor?.("verify", `uthibitisho wa ${milestoneId} raundi ${round} (wakaguzi wawili)`, round),
+      roundHeader: roundHeaderTxt,
     });
     let allPassed = true;
     for (const co of repCos) {
@@ -447,6 +459,19 @@ export async function runMilestonePipeline(
       const waited = await deps.awaitVisionLane("lane yenye vision inahitajika kwa SIGN-OFF");
       if (waited) visionOk = true;
     }
+    // C8 (PENDEKEZO, env toggle MS_BROWSER_EVAL=1): BROWSER-EVAL gate — visual/mixed inahitaji
+    // kipimo cha browser halisi (DOM/screenshot) kilicho PASS kwenye raundi ya mwisho
+    if (deps.browserEvalRequired && m.reviewMode !== "technical") {
+      const browserTypes: CheckResult["type"][] = ["dom_exists", "computed_style", "no_horizontal_overflow", "console_clean", "contrast_min", "touch_target_min", "screenshot_taken"];
+      const checksNow = (lastEv?.checks || []) as CheckResult[];
+      const browserPass = checksNow.some((c) => browserTypes.includes(c.type) && c.result === "PASS");
+      if (!browserPass) {
+        note(`\u{1f512} sign-off imezuiwa (C8): hakuna kipimo cha browser kilicho PASS kwenye ushahidi wa raundi ${st.round} (MS_BROWSER_EVAL=1).`);
+        mark("BLOCKED", `${milestoneId}.K.browser_eval`);
+        writeMilestonesState(runnerItems, run);
+        return { status: "BLOCKED", milestoneId, rounds: st.round, defectsTotal: run.defects.filter((d) => d.milestoneId === milestoneId).length, defectsOpen: 0, signedOff: false, blockedReason: "C8 browser_eval gate: ushahidi wa browser haujaliza (MS_BROWSER_EVAL=0 kuizima)" };
+      }
+    }
     const gate = signOffGate(finalSigs, (lastEv?.checks || []) as CheckResult[], run.defects.filter((d) => d.milestoneId === milestoneId), receiptsOk, !visionOk, m.reviewMode);
     if (gate.ok) {
       mark(gate.status, `${milestoneId}.K.signoff`);
@@ -455,6 +480,15 @@ export async function runMilestonePipeline(
         note(`🖊️ ${milestoneId}: SIGNED_OFF_WITH_WAIVERS (minor ${gate.openMinor.map((d) => d.id).join(", ")} zimewaiver).`);
       } else {
         note(`🖊️ ${milestoneId}: SIGNED_OFF ✅ — ${buildRoundHeader(st, run.defects)}`);
+      }
+      // C6+C7 (4.10): HARNESS ina-commit + tag milestone-Mk + push SERVER-SIDE (Computer hana token kamwe)
+      if (deps.signOffCommit) {
+        try {
+          const sc = await deps.signOffCommit(milestoneId);
+          if (sc.tag) st.signedTag = sc.tag;
+          if (sc.tag) note(`🏷️ ${milestoneId}: git tag ${sc.tag}${sc.pushed ? " (imepush server-side)" : ""}${sc.note ? ` — ${sc.note}` : ""}.`);
+          else if (sc.note) note(`🏷️ ${milestoneId}: tag haikuwezekana — ${sc.note}`);
+        } catch (e) { note(`⚠️ ${milestoneId}: tag/push imeshindikana — ${String((e as { message?: string })?.message || e).slice(0, 160)}`); }
       }
       writeMilestonesState(runnerItems, run);
       emit();

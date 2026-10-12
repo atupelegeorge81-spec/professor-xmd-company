@@ -385,7 +385,7 @@ async function getSandbox(runner: any, cu: CuRunState): Promise<any> {
 }
 
 function bridgeCommand(o: {
-  title: string; session: string; token: string; startI: number; resumeNote: string; restoreUrl?: string;
+  title: string; session: string; token: string; startI: number; resumeNote: string; restoreUrl?: string; noSecrets?: boolean;
 }): string {
   const common = [
     `cd /home/user && bash /home/user/cu_setup.sh;`,
@@ -397,11 +397,13 @@ function bridgeCommand(o: {
     // R32: URL ya search tool (MCP in-process ya bridge inapiga route ya Koyeb kwanza,
     // fallback SearXNG direct). Hakuna token budget — agizo la CEO 06-10 usiku.
     `CU_SEARCH_URL=${q(CU_PUBLIC_URL + "/api/boardroom/cu-search")}`,
-    `GITHUB_TOKEN=${q(process.env.CU_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "")}`,
-    `GH_TOKEN=${q(process.env.CU_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "")}`,
+    ...(o.noSecrets
+      ? [`GITHUB_TOKEN=`, `GH_TOKEN=`] // C7: milestone runs — harness inapush (token haionekani kwa Computer)
+      : [`GITHUB_TOKEN=${q(process.env.CU_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "")}`,
+         `GH_TOKEN=${q(process.env.CU_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "")}`]),
     `GITHUB_ORG=${q(GITHUB_ORG)}`,
     `GITHUB_USERNAME=${q(GITHUB_USER)}`,
-    `VERCEL_TOKEN=${q(process.env.CU_VERCEL_TOKEN || process.env.VERCEL_TOKEN || "")}`,
+    ...(o.noSecrets ? [`VERCEL_TOKEN=`] : [`VERCEL_TOKEN=${q(process.env.CU_VERCEL_TOKEN || process.env.VERCEL_TOKEN || "")}`]),
   ];
   const sharedArgs = [
     `--task-file /home/user/plan.md`,
@@ -436,6 +438,9 @@ export interface CuPhaseOpts {
   phaseLabel?: string; // "M1 ujenzi" / "M1 raundi 3 ya marekebisho"
   /** OCB-C + mkataba wa kumaliza (6.3) unaoboreshwa kwenye agizo la awamu — siradi ya CLAUDE.md */
   extraBrief?: string;
+  /** C7 (milestones): token haziyui bridge env — Computer ASIwone GITHUB_TOKEN/GH_TOKEN/VERCEL_TOKEN.
+   *  Push/deploy hufanywa na HARNESS upande wa server (signOffCommit ya depsAdapter). */
+  noSecrets?: boolean;
 }
 
 /** P3: anzisha awamu MPYA ya Computer (milestone/raundi inayofuata) — cu state ipwe mipya;
@@ -625,7 +630,7 @@ export async function startComputerPhase(runner: Runner, hooks: CuHooks, opts?: 
       : undefined;
     const cmd = bridgeCommand({
       title: plan.title, session: runner.sessionId || runner.id, token: cu.token,
-      startI: cu.maxI, resumeNote, restoreUrl,
+      startI: cu.maxI, resumeNote, restoreUrl, noSecrets: !!opts?.noSecrets,
     });
     hooks.blog("api", `🚀 Sandbox ${cu.sandboxId?.slice(0, 8)}… — bridge inaanzishwa${resume ? " (resume)" : ""}.`);
 

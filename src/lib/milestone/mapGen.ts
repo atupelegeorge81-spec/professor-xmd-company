@@ -1,7 +1,7 @@
 // src/lib/milestone/mapGen.ts — Hatua B+C ya 4.2: Optimus (Gemini Flash) anaandika ramani ya
 // milestones; CODE inaihakiki (validateMilestoneMap). Batili → makosa yanarudishwa kwa LLM
 // (hadi mara 3); zikishindwa zote → ramani ya dharura ceil(N/4) (kimaelezo: "mpango wa dharura").
-import type { MilestoneMap, ReviewMode } from "./types";
+import type { Milestone, MilestoneMap, MilestonesRunState, ReviewMode } from "./types";
 import { fallbackMilestoneMap, parseJsonFromLLM, validateMilestoneMap } from "./schemas";
 
 export interface AgendaItemLite { index: number; item: string }
@@ -86,4 +86,54 @@ export async function generateMilestoneMap(io: MapGenIO): Promise<MapGenResult> 
     lastErrors,
     usedFallback: true,
   };
+}
+
+/* ========================= C5 (4.2.7): map iwezavyo mid-run ========================= */
+
+/**
+ * C5 (4.2.7): agenda imeongezeka KATI YA RUN → panua ramani.
+ * Milestones ZILIZOSAINIWA (SIGNED_OFF / SIGNED_OFF_WITH_WAIVERS) haziguswi KAMWE;
+ * zilizobaki (bado ndani ya kazi) hukatishwa upya kwa kugawanyiko wa code (≈agenda 4 kwa moja,
+ * kama fallbackMilestoneMap) kisha ramani iliyounganyizwa kuhakikiwa kwa validateMilestoneMap.
+ * Inarudisha null iwapo muunganiko hauko salama (host inaendelea na ramani ya zamani + onyo).
+ */
+export function extendMilestoneMap(
+  oldMap: MilestoneMap,
+  run: Pick<MilestonesRunState, "states">,
+  newTotal: number,
+): { map: MilestoneMap; added: string[]; removed: string[] } | null {
+  if (!Number.isInteger(newTotal) || newTotal <= oldMap.totalAgendas) return null;
+  const SIGNED = new Set(["SIGNED_OFF", "SIGNED_OFF_WITH_WAIVERS"]);
+  const kept = oldMap.milestones.filter((m) => SIGNED.has(run.states[m.id]?.status || ""));
+  const ongoing = oldMap.milestones.filter((m) => !SIGNED.has(run.states[m.id]?.status || ""));
+  const removed = ongoing.map((m) => m.id);
+  const startFrom = kept.length ? Math.max(...kept.map((m) => m.agendas.to)) + 1 : 1;
+  if (startFrom > newTotal) return null; // hakuna agenda iliyobaki isiyosainiwa
+  const n = newTotal - startFrom + 1;
+  const k = Math.max(1, Math.ceil(n / 4));
+  const per = Math.ceil(n / k);
+  const seed = ongoing[0] || oldMap.milestones[0];
+  const fresh: Milestone[] = [];
+  for (let i = 0; i < k; i++) {
+    const from = startFrom + i * per;
+    const to = Math.min(newTotal, from + per - 1);
+    fresh.push({
+      id: `M${kept.length + i + 1}`,
+      title: `Milestone ${kept.length + i + 1} (agenda ${from}\u2013${to}, upanuzi)`,
+      agendas: { from, to },
+      phase: i === k - 1 ? "final" : `phase-${kept.length + i + 1}`,
+      reviewMode: seed?.reviewMode || "visual",
+      roster: [...(seed?.roster || ["pm", "designer", "frontend", "backend"])],
+      rationale: `C5 (4.2.7): ramani ilipanuliwa mid-run (agenda ${oldMap.totalAgendas} \u2192 ${newTotal}); milestones zilizosainiwa zimehifadhiwa bila kuguswa.`,
+    });
+  }
+  const merged: MilestoneMap = {
+    ...oldMap,
+    totalAgendas: newTotal,
+    usedFallback: true,
+    milestones: [...kept, ...fresh],
+  };
+  const v = validateMilestoneMap(merged, newTotal, merged.sessionId);
+  if (!v.ok) return null;
+  return { map: v.value, added: fresh.map((m) => m.id), removed };
 }

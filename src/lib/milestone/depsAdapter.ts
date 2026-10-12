@@ -6,7 +6,35 @@ import { beginNewCuPhase, startComputerPhase, cuEnabled, type CuHooks } from "..
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { collectEvidencePack, evidenceRel, type CollectArgs, type SbxLike } from "./harness/collect";
+import { parseReceiptFiles, receiptFetchShell } from "./receipts";
 import type { OrchestratorDeps, ComputerBuildRequest, ComputerBuildResult, BuildTerminal } from "./orchestrate";
+
+/**
+ * Soma risiti HALISI (.xmd/receipts/*.json) kutoka kwenye sandbox baada ya CU kumaliza
+ * hatua ya ujenzi. handle haipo (mf. test fixtures) → orodha tupu (gate itasema NOT_ATTEMPTED).
+ */
+/** Fufua secret yoyote kwa "***" — output ya git push inaweza kumuipiga token kwenye URL ya remote. */
+function redactSecret(text: string): string {
+  const token = process.env.CU_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "";
+  let out = typeof text === "string" ? text : String(text || "");
+  if (token) out = out.split(token).join("***");
+  out = out.replace(/x-access-token:[^@\s]*@/g, "x-access-token:***@");
+  return out.slice(0, 400);
+}
+
+async function readSandboxReceipts(runner: Record<string, unknown>): Promise<ReturnType<typeof parseReceiptFiles>> {
+  const sbx = (runner as any)?.__sbx as SbxLike | null | undefined;
+  if (!sbx?.commands?.run) return [];
+  try {
+    const ws = ((runner as any)?.cu?.workspace as string) || "/home/user/app";
+    const r = await sbx.commands.run(`cd "${ws}" && ${receiptFetchShell()}`, { timeoutMs: 20_000 });
+    if (!r || typeof r.stdout !== "string" || !r.stdout) return [];
+    const files: Record<string, string> = {};
+    const parts = r.stdout.split(/@@@RECEIPT:([^\n]+)\n/);
+    for (let i = 1; i + 1 < parts.length; i += 2) files[parts[i].trim()] = parts[i + 1] || "";
+    return parseReceiptFiles(files);
+  } catch { return []; }
+}
 
 export interface DepsAdapterArgs {
   runner: { id: string; sessionId: string; project: string; items: unknown[]; cu?: any; finale?: any } & Record<string, unknown>;
@@ -34,6 +62,8 @@ export function milestoneDepsFor(args: DepsAdapterArgs): { deps: Partial<Orchest
         steps: (req.planMd.match(/^###\s/gm) || []).length || 1,
       },
       phaseLabel: req.label || (req.round ? `raundi ${req.round}` : "ujenzi"),
+      // C7: token haziyui bridge env — push/deploy yote ni YA HARNESS (server-side, hapa chini)
+      noSecrets: true,
     });
     const cu = runner.cu;
     const report: string | undefined = cu?.report;
@@ -41,9 +71,42 @@ export function milestoneDepsFor(args: DepsAdapterArgs): { deps: Partial<Orchest
     const cuDone = !!cu?.done;
     if (!cuDone) throw new Error(`CU haikumaliza (${cu?.paused ? "PAUSED_QUOTA" : "imekatizwa"}) — pipeline inasimama kwa usalama (curatibu wa pause).`);
     const terminal: BuildTerminal = (cu?.terminal as BuildTerminal | undefined) || "COMPLETED_VERIFIED";
-    // Risiti zinaondolewa kutoka kwenye Ripoti ya Milestone kwa P4 (mkataba wa receipts 5.6/7.3). Sasa:
-    // tunarudisha tupu — harness itathibitisha NO-OP, na round-verify itasema kusema ukweli.
-    return { terminal, report, receipts: [], changedFiles: changed };
+    // Risiti HALISI (5.6/7.3): zimesomwa kutoka kwenye .xmd/receipts/ ya sandbox —
+    // receipt-gate ya orchestrate itazithibitisha dhidi ya git diff na kupiga NO-OP zinazohitilafiana.
+    const receipts = await readSandboxReceipts(runner);
+    return { terminal, report, receipts, changedFiles: changed };
+  };
+
+  // --- C6+C7 (4.10): sign-off commit + git tag milestone-Mk + push — YOTE Server-SIDE, token haipici bridge env ---
+  deps.signOffCommit = async (milestoneId: string) => {
+    const runner = args.runner as any;
+    const sbx = runner?.__sbx as SbxLike | null | undefined;
+    if (!sbx?.commands?.run) return { tag: null, pushed: false, note: "hakuna sandbox (tag hairusiwi kwa fixtures)" };
+    const token = process.env.CU_GITHUB_TOKEN || process.env.GITHUB_TOKEN || "";
+    const ws = (runner?.cu?.workspace as string) || "/home/user/app";
+    const tag = `milestone-${milestoneId}`;
+    const script = [
+      `cd '${ws}' || exit 1`,
+      `git config user.email 'harness@xmd.local' && git config user.name 'XMD Harness'`,
+      `git add -A >/dev/null 2>&1 || true`,
+      `(git diff --cached --quiet || git commit -qm 'chore(${milestoneId}): sign-off — XMD harness')`,
+      `git tag -af '${tag}' -m 'milestone ${milestoneId} signed-off'`,
+      `REMOTE=$(git remote get-url origin 2>/dev/null || true)`,
+      `if [ -n "$REMOTE" ] && [ -n "$TOKEN" ]; then`,
+      `  CLEAN=$(printf '%s' "$REMOTE" | sed -E 's#(https://)[^@/]*@#\\1#')`,
+      `  PUSH_URL=$(printf '%s' "$CLEAN" | sed -E "s#https://#https://x-access-token:\${TOKEN}@#")`,
+      `  git push "$PUSH_URL" HEAD --tags >/dev/null 2>&1 && echo PUSH_OK || echo PUSH_FAILED`,
+      `else echo PUSH_SKIPPED; fi`,
+    ].join("; ");
+    try {
+      const r = await sbx.commands.run(`export TOKEN='${token}'; ${script}`, { timeoutMs: 60_000 });
+      const out = redactSecret(`${r?.stdout || ""} ${r?.stderr || ""}`);
+      const pushed = out.includes("PUSH_OK");
+      const note = pushed ? "push imekamilika" : out.includes("PUSH_SKIPPED") ? "hakuna remote/token — push imerukwa" : "push imeshindikana (angalia server log)";
+      return { tag, pushed, note };
+    } catch (e) {
+      return { tag: null, pushed: false, note: redactSecret(String((e as { message?: string })?.message || e).slice(0, 160)) };
+    }
   };
 
   // --- collectEvidence (P4 HALISI): sandbox ya cu kwakufanya evidence.py + checks ya code ---

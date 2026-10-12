@@ -2,6 +2,7 @@
 // kila milestone/raundi. Computer HAPATI mini-reports kamili (9) — anapata pack fupi hii.
 import type { ChangeOrder, Defect, Milestone } from "./types";
 import { buildRoundHeader } from "./rounds";
+import { RECEIPT_PROTOCOL_LINES } from "./receipts";
 import type { MilestoneState } from "./types";
 
 export interface StartPackInput {
@@ -46,8 +47,7 @@ export function buildStartPack(i: StartPackInput): string {
       }
     }
     L.push("");
-    L.push("MKATABA WA RISITI (5.6): kila CO irudishe risiti yenye filesChanged (path, summary, kabla↔baada),");
-    L.push("commandsRun, notes. Risiti iliyohitilafiana na git diff inakataliwa (haitahesabiwa kama jaribio).");
+    L.push(...RECEIPT_PROTOCOL_LINES);
   }
   if (i.inheritedDefects?.length) {
     L.push("");

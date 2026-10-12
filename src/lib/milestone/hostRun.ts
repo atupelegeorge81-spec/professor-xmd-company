@@ -4,8 +4,11 @@
 import { runMilestonePipeline, type OrchestratorDeps, type MilestonePipelineResult } from "./orchestrate";
 import { writeMilestonesState } from "./state";
 import { generateMilestonePlan } from "./planGen";
+import { extendMilestoneMap } from "./mapGen";
 import * as review from "./reviewLLM";
 import type { LaneCall, MilestonesRunState } from "./types";
+import { AGENTS as TEAM_AGENTS } from "../team";
+import { buildOCB } from "./ocb";
 
 export interface HostRunHooks {
   blog: (level: "info" | "success" | "warning" | "error" | "system", msg: string) => void;
@@ -26,6 +29,10 @@ export interface HostRunArgs {
   /** LLM call (broker) kwa plan generation — planGen yenyewe inatengeneza prompt + validators. */
   callLLM: (agentId: string, messages: { role: string; content: string }[], maxTokens: number) => Promise<string>;
   /** host inaweza kujazwa na deps zinazofanywa na module zilizonza (bench/engine adapter — P4+) */
+  /** C5 (4.2.7): idadi halisi ya agenda sasa (kutoka boardRunner) — ikizidi map.totalAgendas, ramani inapanuliwa. */
+  agendaCount?: number;
+  /** C4 (7.6): utafutaji wa web kwa wakaguzi (host inajua jina/sekreti za search — module hii haizi). */
+  searchFn?: (q: string) => Promise<string>;
   deps?: Partial<OrchestratorDeps>;
   concurrencySignal?: AbortSignal;
 }
@@ -56,6 +63,31 @@ const TERMINAL_OFF = (s?: string) => ["SIGNED_OFF", "SIGNED_OFF_WITH_WAIVERS"].i
 export async function runMilestonesHost(args: HostRunArgs): Promise<HostRunResult> {
   const { run, hooks } = args;
   const results: MilestonePipelineResult[] = [];
+
+  // C5 (4.2.7): agenda imeongezeka KATI YA RUN → panua ramani; zilizosainiwa HAIGUSWI kamwe
+  if (typeof args.agendaCount === "number" && args.agendaCount > run.map.totalAgendas) {
+    const oldTotal = run.map.totalAgendas;
+    const grown = extendMilestoneMap(run.map, run, args.agendaCount);
+    if (grown) {
+      run.map = grown.map;
+      const now = new Date().toISOString();
+      for (const id of grown.removed) delete run.states[id];
+      for (const id of grown.added) {
+        run.states[id] = { id, status: "DISCUSSING", round: 0, maxRounds: 10, currentStepId: `${id}.D.discuss`, startedAt: now, updatedAt: now, lanesUsed: [] };
+      }
+      // defects zilizokuwa OPEN kwa milestones zilizokatishwa — ziwe by milestone ya kwanza ya ziada
+      if (grown.added.length) {
+        const firstAdded = grown.added[0];
+        for (const d of run.defects) if (grown.removed.includes(d.milestoneId) && !["SIGNED_OFF", "SIGNED_OFF_WITH_WAIVERS"].includes("")) d.milestoneId = firstAdded;
+      }
+      hooks.blog("info", `\u{1f5fa}\ufe0f ramani_updated: agenda ${oldTotal} \u2192 ${args.agendaCount} — mpya: ${grown.added.join(", ")} (zilizosainiwa: hazikuguswa).`);
+      hooks.addChip(`\u{1f5fa}\ufe0f Ramani imesasishwa kati ya kazi (C5): agenda ${oldTotal} \u2192 ${args.agendaCount}. Milestones zilizosainiwa zimebaki sawa.`);
+      writeMilestonesState(args.runner.items, run);
+      await hooks.persist("ramani_updated").catch(() => null);
+    } else {
+      hooks.blog("warning", `\u{1f5fa}\ufe0f agenda imeongezeka (${run.map.totalAgendas} \u2192 ${args.agendaCount}) lakini muunganiko wa ramani hauko salama — ninaendelea na ramani ya zamani.`);
+    }
+  }
   const signedOff: string[] = [];
 
 /** P8-REST: rekodi ya lane kwa kila call ya hukumu (10.4). */
@@ -86,9 +118,25 @@ function recordJudgeLane(run: MilestonesRunState, partial: { stepId: string; tie
     },
     // P8-REST (maelezo 10.2–10.4): rekodi ya lane kwa KILA call ya judge + rekodi ya visionDegraded staki-runner.
     // onLane inaitwa baada ya judgeClient kufaulu — inakilisha LaneCall kwenye hali ya milestone.
-    analyse: review.llmAnalyse({ waitNote: (m) => hooks.blog("info", m), onLane: (rec) => recordJudgeLane(run, { stepId: `M.Review.analyse`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
+    // §6.1.2: OCB kwa kila call ya judge ni WAJIBU — inapata mapito ya hukumilo (warmagnified) na picha.
+    ocbFor: (roleId: string, step: string, round?: number): string => {
+      try {
+        const team = TEAM_AGENTS.slice(0, 5).map((a) => ({ id: a.id, name: a.name, role: a.role }));
+        return buildOCB({
+          project: args.project, brief: args.brief || args.project, team,
+          run, map: run.map, roleId, step, round,
+          milestoneId: run.currentMilestoneId || undefined,
+          next: "kuzipokea ushahidi mpya na kuiga uamuzi sahihi kwa vipimo vya code",
+          reader: "wakaguzi wa raundi / Board ili kufanya hukumu sahihi",
+        });
+      } catch { return `=== OCB (mfupi) ===\nHapa tulipo: ${step}\nMilestone: ${run.currentMilestoneId || "?"}`; }
+    },
+
+    // C8 (PENDEKEZO): browser_eval gate — kutoka env MS_BROWSER_EVAL=1
+    browserEvalRequired: process.env.MS_BROWSER_EVAL === "1",
+    analyse: review.llmAnalyse({ waitNote: (m) => hooks.blog("info", m), search: args.searchFn, onLane: (rec) => recordJudgeLane(run, { stepId: `M.Review.analyse`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
     discussAndMerge: review.llmDiscussAndMerge({ waitNote: (m) => hooks.blog("info", m), onLane: (rec) => recordJudgeLane(run, { stepId: `M.Review.merge`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
-    verifyRound: review.llmVerifyRound({ waitNote: (m) => hooks.blog("info", m), onLane: (rec) => recordJudgeLane(run, { stepId: `M.Verify`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
+    verifyRound: review.llmVerifyRound({ waitNote: (m) => hooks.blog("info", m), search: args.searchFn, onLane: (rec) => recordJudgeLane(run, { stepId: `M.Verify`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
     rewriteConcrete: review.llmRewriteConcrete({ onLane: (rec) => recordJudgeLane(run, { stepId: `M.Co.rewrite`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
     pairPatch: review.llmPairPatch({ onLane: (rec) => recordJudgeLane(run, { stepId: `M.Co.pairPatch`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
     redecide: review.llmRedecide({ onLane: (rec) => recordJudgeLane(run, { stepId: `M.Co.redecide`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }), vision: true, waitNote: (m) => hooks.blog("info", m) }),
@@ -159,7 +207,43 @@ function recordJudgeLane(run: MilestonesRunState, partial: { stepId: string; tie
   const all = run.map.milestones;
   const done = all.every((m) => ["SIGNED_OFF", "SIGNED_OFF_WITH_WAIVERS", "BLOCKED", "CAP_REACHED", "HAUJENGWA"].includes(run.states[m.id]?.status || ""));
   if (done) {
-    hooks.blog("success", `🏁 Kimataifa: milestones zote ${all.length} zimefungwa (${signedOff.length} za kukubaliwa, ${legacy} defects rithi).`);
+    // C10 (4.10): smoke check ya LIVE URL kabla ya kutangaza kuhitimisha — harness inapima server-side
+    const cuMeta = ((args.runner as unknown as Record<string, unknown>)?.cu || undefined) as Record<string, unknown> | undefined;
+    const links = (cuMeta?.links || undefined) as Record<string, unknown> | undefined;
+    const liveUrl = typeof links?.live === "string" ? links.live : "";
+    if (liveUrl && /^https?:\/\//.test(liveUrl)) {
+      const chk = await liveUrlCheck(liveUrl);
+      run.liveCheck = { url: liveUrl, ok: chk.ok, status: chk.status, at: new Date().toISOString() };
+      writeMilestonesState(args.runner.items, run);
+      if (chk.ok) {
+        hooks.blog("success", `\u{1f310} Live URL smoke check: OK (${chk.status}) — ${liveUrl}`);
+        hooks.addChip(`\u{1f310} Live URL imejibu (${chk.status}) — run imefungwa kwa mafanikio.`);
+      } else {
+        hooks.blog("warning", `\u{1f310} Live URL smoke check: status ${chk.status} — ${liveUrl} (ripoti inaeleza; kagua deploy).`);
+        hooks.addChip(`\u26a0\ufe0f Live URL haikujibu (${chk.status}) — kagua deploy kabla ya kuanzia mwisho.`);
+      }
+    } else {
+      run.liveCheck = { url: "", ok: false, status: 0, at: new Date().toISOString() };
+      hooks.blog("warning", "\u{1f310} Live URL haipo — smoke check imerukwa (C10: ripoti inaeleza).");
+    }
+    hooks.blog("success", `\u{1f3c1} Kimataifa: milestones zote ${all.length} zimefungwa (${signedOff.length} za kukubaliwa, ${legacy} defects rithi).`);
   }
   return { done, results, signedOff, incomplete, legacy };
+}
+
+/** C10: ping ya live URL — HEAD kwanza (GET fallback), timeout salama, redirect inafuatwa. */
+export async function liveUrlCheck(url: string, timeoutMs = 10_000): Promise<{ ok: boolean; status: number }> {
+  const attempt = async (method: "HEAD" | "GET"): Promise<number> => {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const r = await fetch(url, { method, redirect: "follow", signal: ctl.signal });
+      return r.status;
+    } finally { clearTimeout(t); }
+  };
+  try {
+    let status = await attempt("HEAD");
+    if (status === 405 || status === 501 || status === 429) status = await attempt("GET");
+    return { ok: status >= 200 && status < 400, status };
+  } catch { return { ok: false, status: 0 }; }
 }

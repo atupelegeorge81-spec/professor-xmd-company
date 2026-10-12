@@ -52,6 +52,8 @@ export interface MilestoneState {
   startedAt: string; // ISO
   updatedAt: string; // ISO
   lanesUsed: LaneCall[];
+  /** C6 (4.10): git tag ya sign-off, mf. "milestone-M1" — huwekwa na harness (signOffCommit). */
+  signedTag?: string;
 }
 
 /* ---------- 8.3 Vipimo vya kukubalika (Acceptance Checks) ---------- */
@@ -254,4 +256,6 @@ export interface MilestonesRunState {
   /** Ushahidi kwa raundi ("M1.R2" → EvidencePack) */
   evidence: Record<string, EvidencePack>;
   visionDegraded?: boolean; // 10.3: mlolongo umepoteza lane yenye vision — SIGN-OFF ya visual inasubiri
+  /** C10 (4.10): smoke check ya LIVE URL kabla ya kufunga run — harness inapima server-side. */
+  liveCheck?: { url: string; ok: boolean; status: number; at: string };
 }
