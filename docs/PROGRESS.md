@@ -108,3 +108,40 @@ $ vitest run (full, CI=1)                         → 335 passed (335), 30 files
 $ tsc --noEmit -p tsconfig.json                   → CLEAN
 ```
 **Bugs zilizorekebishwa wakati wa hii (real):** (a) adapter-P3 milestone-suite ilikuwa poisonous kutokana na synthetic judge kuyumba wakati env-era lane inafaa — dilifanya test fail ku-enclave; (b) `collect.ts` regression ilikuwa stub (`regressionAgainst({},{},2)`) — sasa inasoma PNG halisi; (c) engine haikuweka `__sbx` (faili-kama-dep ilikuwa unreachable); fixes 3 sites; zote zimefungwa na tsc+tests ikiisha.
+
+## P5–P7 — Verification ya mabadiliko yaliyowekwa + P8-rest (2026-10-12)
+
+**Kigezo cha kukubalika:**
+- P5: uchambuzi wa kujitegemea (parallel), mjadala (itifaki ya sasa), merge na Optimus, CO zenye validator (acceptance checks), kosa lisilo na CO linakataliwa — **imekaguliwa** kwenye orchestrate.ts/reviewLLM.ts (test: orchestrate.test 7/7).
+- P6: risiti + git-diff NO-OP (diagnosis NOT_ATTEMPTED/ATTEMPTED_WRONG/TECH_BLOCKER), hukumu ya wawili+vipimo, escalation concrete→pair_patch→redecide (waivers), kikomo 10 → CAP_REACHED + INHERITED — **imekaguliwa** (hosted 7/7).
+- P7: computerchecks (masterpiece ys; registry `rosterForAgenda`) anawezaMilestone ya backend bila screenshots — imeshughulikiwa.
+- **P8-rest imekamilika:** lane recording kwa kila call ya familyst (10.4): hostRun inachota `onLane` cleanup → `recordJudgeLane` inaimarisha `lanesUsed` ya MilestoneState; P8 core (broker/judge.ts) tayali imewekwa (12/12). `visionDegraded` host → `awaitVisionLane` 10.3.b subiri (~3dk): **imeunganishwa** kwenye depsAdapter.
+- **Q-003 lose action:** msStart events — live bcast + persisted item + replay (hostRun.ts, adapter.ts savedToEvents).
+
+**Command output:**
+```
+$ vitest run → 338 passed (338)
+$ tsc --noEmit → CLEAN
+```
+
+## P9 — Ripoti ya mwisho kutoka data halisi (maelezo 13) (2026-10-12)
+
+**Imewekwa:** `src/lib/milestone/finale.ts` — deterministic ripoti (sehemu zote 7 za 13):
+1. muhtasari vs brief ya CEO; 2. jedwali la milestones+halis+raundi+lanes; 3. ledger ya Board; 4. makosa INHERITED+waivers na sababu; 5. ushahidi (screenshots ids, checks, git diff, regression, URLs); 6. usalama/kiufundi; 7. kuendesha+kujaribu+hatari.
+- **Sheria 13 imelindwa:** `statusLabel = KAMILI|SEHEMU|IMESIMAMA` — HAIsémi "imekamilika" bila zote SIGNED_OFF*; `markdown` haujajipamba (CAP_REACHED/BLOCKED≈IMESIMAMA).
+- **Types addition:`** `Defect.waiveReason`/`waiveApprovedBy` (7.5 casino).
+- Wiring (boardRunner): ripoti ya milestones ikilipa (done) — ripoti iliyowekwa bila pitiliza (supplement chip, `runner.finale.reportId` kama haikuwepo).
+
+**Command output:**
+```
+$ vitest run src/lib/milestone/finale.test.ts → 3/3
+$ vitest run (full) → 338 passed
+```
+
+## P10 — Utulivu wa miundombinu (Koyeb) (2026-10-12)
+
+**Imewekwa (limeelezwa kwenye maelezo §11 + 15#8–#10):**
+1. **Orphan sweeper** (`cu/autoResume.ts sweepOrphans`): sessions "running" bila heartbeat ≥8dk zinawekwa `paused` + resumeAt — checkPausedDue inaita (kwa tick+force). Rescue ya Koyeb free-instance-laisi.
+2. **Persist-before-snapshot** (`engine.ts pauseComputerFromServer`): doc "paused" inaandikwa KWANZA (SIGTERM haiuangus sweep; hilo likishindwa, sandbox inabaki hai kuhifadhi). Snapshot inakuja baadaye (≤2dk imefungwa timebox nguo).
+3. **/api/health haigusi DB tena**: query param che¨cése?deep=1 inaruhusu detail — Koyeb HTTP health check haiiigusi DB (#10). **`/api/live` imewekwa**: inajibu `{ok:true,ts}` bila igusi chochote.
+4. Kataza zaza za sio-priv: harro token whine (robots ready) — dynamic options kwenye health.db=1.

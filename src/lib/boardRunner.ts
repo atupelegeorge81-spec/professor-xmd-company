@@ -3791,6 +3791,29 @@ KWENYE SEHEMU YA 4 (Maamuzi): taja KILA agenda ya Ledger (1 hadi ${agenda.length
           if (host.done) {
             runner.finale = { ...(runner.finale || {}), milestonesDone: true, computer: true };
             blog("success", `🏁 Milestones zimefungwa (${host.signedOff.length} za kukubaliwa, ${host.incomplete.length} zisizokamilika).`);
+            // P9 (maelezo 13): ripoti ya MWISHO kutoka data halisi ya milestones — iiteinsha ripoti ya LLM ya zamani
+            try {
+              const { buildMilestonesFinalReport } = await import("./milestone/finale");
+              if (buildMilestonesFinalReport) {
+                const ledgerText = fbr.map((e) => `- [A${e.agenda_index}] ${e.agenda_item}: ${e.status} — ${String(e.decision_summary || "").slice(0, 220)}`).join("\n");
+                const out = buildMilestonesFinalReport({
+                  project: runner.project, brief: String(runner.project || ""), run: msRun,
+                  ledgerText,
+                  githubUrl: (runner.cu?.links?.repo as string | undefined) || undefined,
+                  liveUrl: (runner.cu?.links?.live as string | undefined) || undefined,
+                });
+                addChip(`📋 Ripoti ya mwisho (milestones): **${out.statusLabel}** — ${out.statusDetail}.`);
+                blog("info", `📋 Ripoti ya mwisho ya milestones imetengenezwa (${out.statusLabel}: ${out.statusDetail}).`);
+                if (!runner.finale?.reportId) {
+                  const rid = await saveReport({ title: `${reportTitle} — Ripoti ya Milestones`, project: runner.project, agents: "Timu ya Agents 5 + milestones-host", content: out.markdown });
+                  if (rid) { runner.finale = { ...(runner.finale || {}), reportId: rid }; bcast({ type: "report", id: rid, title: `${reportTitle} — Ripoti ya Milestones`, content: out.markdown }); }
+                } else {
+                  bcast({ type: "report", id: runner.finale.reportId, title: `${reportTitle} — Ripoti ya Milestones (supplement)`, content: out.markdown });
+                }
+              }
+            } catch (e: any) {
+              blog("warning", `⚠️ Ripoti ya mwisho ya milestones imeshindwa: ${String(e?.message || e).slice(0, 120)}`);
+            }
           } else {
             blog("warning", `⚠️ Milestones hazijakamilika: ${host.incomplete.join(", ")} — Endeleza itaichukua tena.`);
           }

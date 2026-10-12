@@ -119,6 +119,9 @@ export interface Defect {
   status: DefectStatus;
   attempts: number;
   history: DefectHistoryEntry[];
+  /** (7.5) meta ya waive — inapowekwa status="WAIVED"; sehemu 4 ya ripoti haisemi sababu zisizotokea */
+  waiveReason?: string;
+  waiveApprovedBy?: string[];
 }
 
 /* ---------- 5.5 ChangeOrder ---------- */

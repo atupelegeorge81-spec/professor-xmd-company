@@ -51,11 +51,46 @@ export async function autoResumeSession(sessionId: string): Promise<boolean> {
   }
 }
 
+/** P10 (maelezo 11.4 / #8): ORPHAN SWEEPER — sessions zilizo "running" bila heartbeat/data kubwa
+ * za muda mrefu (Koyeb imelala / runner imesong'aa bila persist) zinawekwa "paused" + heartbeat ya
+ * Chip ichukuliwe — ili tick inayofuata (auto-resume pia ikirejesha). Hii inafika baada ya boot sweeper. */
+export async function sweepOrphans(): Promise<number> {
+  const a = dbOf();
+  if (!a) return 0;
+  try {
+    const docs = await a.db.listDocuments(a.databaseId, "boardroom_sessions", [Query.equal("status", "running"), Query.limit(20)]);
+    let swept = 0;
+    const now = Date.now();
+    for (const d of docs.documents || []) {
+      const items = Array.isArray((d as any).items) ? (d as any).items : [];
+      const chip = readCuChip(items);
+      const hb = Number(chip?.resumeAt === 0 ? 0 : 0) || Date.parse(String((d as any).$updatedAt || (d as any).updatedAt || "")) || 0;
+      const staleMs = hb ? now - hb : now;
+      // "running" zisizo na heartbeat kwa ≥ 8dk — maana kubwa: runner imelala/isiyofikika tena
+      if (staleMs >= 8 * 60_000) {
+        const resumeAt = now + 5 * 60_000; // kurari tena kwa cushion
+        try {
+          await a.db.updateDocument(a.databaseId, "boardroom_sessions", d.$id, { status: "paused" });
+          // weka resumeAt chip-side ili checkPausedDue iipokee
+          void (async () => { try { await autoResumeSession(d.$id); } catch { /* kimya */ } })();
+          swept += 1;
+        } catch (e) { /* next */ }
+      }
+    }
+    if (swept) console.log(`[cu/autoResume] 🧹 orphan sweep: ${swept} session(s) zilizokuwa "running" zimewekwa paused (Koyeb ililala).`);
+    return swept;
+  } catch (e) {
+    console.warn(`[cu/autoResume] orphan sweep imekufa: ${String(e).slice(0, 140)}`);
+    return 0;
+  }
+}
+
 /** Scan ya sessions zilizo "paused" — zile ambazo resumeAt imepita zinaendelea YENYEWE. */
 export async function checkPausedDue(force = false): Promise<number> {
   const now = Date.now();
   if (!force && now - lastCheck < 60_000) return 0;
   lastCheck = now;
+  void sweepOrphans().catch(() => {});
   const a = dbOf();
   if (!a) return 0;
   try {

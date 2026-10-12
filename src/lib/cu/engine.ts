@@ -1147,6 +1147,10 @@ export async function pauseComputerFromServer(runner: Runner, hooks: CuHooks | n
   cu.resumeAt = resumeAt;
   cu.stallWarned = false;
   runner.items.push({ kind: "cu", id: `cu_pause_${runner.items.length}`, i: cu.maxI, cu: "pause", resumeAt, reason: String(reason).slice(0, 200), steps: cu.step } as any);
+  // P10 (maelezo 11.5 / #8): HIFADHI HALI KWANZA, snapshot baadaye. SIGTERM inahenguea sekunde 22
+  // — snapshot inaweza kushikilia dakika; doc "paused" ziandikwe mapema ili auto-resume iisikose.
+  writeCuChip(runner);
+  if (hooks) { void hooks.persist("paused", hooks.title); }
   if (hooks) {
     const t = resumeAt ? new Date(resumeAt).toLocaleTimeString("en-GB", { timeZone: "Africa/Dar_es_Salaam", hour12: false }) : "";
     hooks.blog("warning", `⏸️ XMD Computer imepumzishwa — ${reason}. Workspace inahifadhiwa...`);
