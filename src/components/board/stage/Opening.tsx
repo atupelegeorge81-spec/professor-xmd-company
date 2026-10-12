@@ -1,7 +1,7 @@
 "use client";
 import { Code2, Compass, Landmark, ListChecks, Sparkles } from "lucide-react";
 import { AGENTS } from "@/lib/team";
-import type { AgendaBuildItem, AgendaStartItem, ConveneItem, ScopeItem } from "@/lib/stage/types";
+import type { AgendaBuildItem, AgendaStartItem, ConveneItem, MsChipItem, MsStartItem, ScopeItem } from "@/lib/stage/types";
 import { cn } from "@/lib/utils";
 import { AgentAvatar, AvatarStack } from "../../ui/AgentAvatar";
 import { Card, Lane, Tag, ag } from "./kit";
@@ -110,6 +110,39 @@ export function FinaleMark() {
         </span>
         <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[var(--color-line-strong)]" />
       </div>
+    </div>
+  );
+}
+
+
+/** P2-Q003 (uamuzi wa mmiliki 2026-10-12): card ya "milestone inawanzishwa" — iko sawa na AgendaStartMark. */
+export function MsStartMark({ it }: { it: MsStartItem }) {
+  const m = it.milestone;
+  return (
+    <div id={`milestone-${m.id}`} className="scroll-mt-16 animate-[rise_0.5s_both] pt-3">
+      <div className="flex items-center gap-3 py-2">
+        <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[var(--color-line-strong)]" />
+        <span className="flex max-w-[82%] items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-ink-2)] py-1 pl-1 pr-2 text-[11.5px]">
+          <span className="rounded-full bg-white/[0.07] px-2 py-0.5 font-mono text-[10.5px] font-semibold text-[var(--color-fg)]">{m.id}{m.total ? `/${m.total}` : ""}</span>
+          <span className="truncate text-[var(--color-fg-2)]">{m.title}</span>
+          {m.status && m.status !== "PLANNING" ? <span className="rounded-full bg-white/[0.05] px-1.5 py-0.5 font-mono text-[9.5px] text-[var(--color-muted)]">{m.status}</span> : null}
+          {m.round ? <span className="rounded-full bg-white/[0.05] px-1.5 py-0.5 font-mono text-[9.5px] text-[#7dd3fc]">R{m.round}/{m.maxRounds || 10}</span> : null}
+        </span>
+        <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[var(--color-line-strong)]" />
+      </div>
+    </div>
+  );
+}
+export function MsChipMark({ it }: { it: MsChipItem }) {
+  const m = it.milestone;
+  return (
+    <div className="animate-[rise_0.35s_both] py-1.5">
+      <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-ink-2)] px-3 py-1 text-[11px]">
+        <span className="font-mono text-[10px] font-semibold text-[var(--color-fg)]">{m.id}</span>
+        <span className="truncate text-[var(--color-fg-2)]">{m.title}</span>
+        {m.status ? <span className="font-mono text-[9.5px] text-[var(--color-muted)]">{m.status}</span> : null}
+        {m.round ? <span className="font-mono text-[9.5px] text-[#7dd3fc]">R{m.round}</span> : null}
+      </span>
     </div>
   );
 }

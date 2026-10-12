@@ -73,6 +73,8 @@ export type BoardEvent =
   | { type: "mode"; mode: "code" | "plan" }
   /** P2 (maelezo.md): onyesho dogo la milestone (ramani iliyotengenezwa, mabadiliko ya hali) */
   | { type: "milestone"; milestone: { id: string; title: string; status: string; round: number; maxRounds: number; mode: "visual" | "technical" | "mixed"; active: boolean } }
+  /** Q-003 (uamuzi wa mmiliki): card ya "milestone inawanzishwa" kama agendaStart — stage stream */
+  | { type: "msStart"; milestone: { id: string; title: string; total?: number; index?: number; status?: string; round?: number; maxRounds?: number } }
   | { type: "error"; message: string }
   | { type: "done" };
 

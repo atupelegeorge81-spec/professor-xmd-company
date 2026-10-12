@@ -935,6 +935,13 @@ export function createBoardAdapter(opts: { instant?: boolean; now?: () => number
         stageSet({ milestones: list });
         break;
       }
+      case "msStart": {
+        // Q-003: card kamili kama agendaStart — pinga dukika tu ya kwanza (idempotency: replay ihifadhi)
+        if (!items.some((x) => x.kind === "msStart" && x.milestone.id === e.milestone.id)) {
+          add({ kind: "msStart", id: nid(), milestone: { id: e.milestone.id, title: e.milestone.title, total: e.milestone.total, index: e.milestone.index, status: (e.milestone.status || "PLANNING") as never, round: e.milestone.round, maxRounds: e.milestone.maxRounds }, shown: 1 } as Extract<StageItem, { kind: "msStart" }>);
+        }
+        break;
+      }
       case "activity": {
         if (e.state === "start") {
           const text = e.text || "";

@@ -140,3 +140,32 @@ export async function getLatestSession(): Promise<any> {
 }
 
 // [PATCH-XMD-V2] applied
+
+
+/** MilestoneDef — id/title/status/round (P2/P3 UI + persistence). */
+export interface MilestoneDef {
+  id: string; title: string; total?: number; index?: number;
+  status?: "DISCUSSING" | "PLANNING" | "BUILDING" | "REVIEW_R0" | "FIXING" | "VERIFYING" | "INHERITED" | "SIGNED_OFF" | "SIGNED_OFF_WITH_WAIVERS" | "CAP_REACHED" | "BLOCKED" | "WAIT_VISION";
+  round?: number; maxRounds?: number;
+}
+/** msStart — card ya "milestone inawanzishwa" (kama agendaStart; Q-003 uamuzi wa mmiliki). */
+export interface MsStartFields {
+  milestone: MilestoneDef;
+  planSteps?: number;
+  planTitle?: string;
+  shown: number;
+}
+/** msChip — chip ya hali inayobadilika (updatable). */
+export interface MsChipFields {
+  milestone: MilestoneDef;
+  locus?: "start" | "review" | "build" | "signoff" | "cap";
+  retryCount?: number;
+}
+export interface MilestonesBaselineData {
+  milestones: MilestoneDef[];
+  baselines?: { id: string; path: string; date: string }[];
+  commits?: { milestoneId: string; hash: string; tag?: string; date: string }[];
+  signoffs?: { milestoneId: string; hash?: string; signedAt?: string; waivers?: string[]; finalSigs?: { reviewer: string; verdict: string; note?: string }[] }[];
+  openCount?: number;
+  roundedMax?: number;
+}

@@ -3,6 +3,7 @@
 //  • collectEvidence → HARNESS YA P4 (hakujawekwa — ready=false hivyo trigger inabaki imezimwa kwa uwazi)
 // Kanuni: tusiipanje ushahidi. P4 inapoweka harness, ready inakuwa true na trigger inaamka.
 import { beginNewCuPhase, startComputerPhase, cuEnabled, type CuHooks } from "../cu/engine";
+import { collectEvidencePack, evidenceRel, type CollectArgs, type SbxLike } from "./harness/collect";
 import type { OrchestratorDeps, ComputerBuildRequest, ComputerBuildResult, BuildTerminal } from "./orchestrate";
 
 export interface DepsAdapterArgs {
@@ -43,9 +44,34 @@ export function milestoneDepsFor(args: DepsAdapterArgs): { deps: Partial<Orchest
     return { terminal, report, receipts: [], changedFiles: changed };
   };
 
-  // --- collectEvidence: P4 harness (screenshots/DOM/commands/git diff) — HAKUJAWEKWA ---
-  const ready = false;
-  const reason = "harness ya ushahidi (P4) bado haijawekwa — trigger imehifadhiwa na imezimwa hadi basso";
+  // --- collectEvidence (P4 HALISI): sandbox ya cu kwakufanya evidence.py + checks ya code ---
+  deps.collectEvidence = async (milestone, round, rep, run) => {
+    const runner = args.runner as any;
+    const cu = runner?.cu;
+    const sbx = runner?.__sbx as SbxLike | null | undefined;  // engine inaweka bootloader muda
+    if (!sbx) throw new Error("sandbox handle (__sbx) haipo — engine istacomplete kupanga");
+    const wsPath = cu?.workspace || "/home/user/app";
+    const baseUrl: string = cu?.links?.live || "http://localhost:3000";
+    const evidenceSrc = (args as any).evidenceScriptSrc as string | undefined; // isipokuwepo, TS itaweka
+    const pack = await collectEvidencePack({
+      sbx, wsPath, baseUrl, milestone, round, run,
+      checks: (run.plans[milestone.id]?.checks || []) as any,
+      routes: Array.from(new Set((run.plans[milestone.id]?.checks || []).flatMap((c: any) => (c.routes as string[] | undefined) || (c.route ? [c.route as string] : [])))) || ["/"],
+      executePython: true,
+      evidenceScriptSrc: evidenceSrc,
+    } as CollectArgs);
+    // Ripoti inatumwa kwa rip-missing check (P9); leo iwekwe comment hakika
+    void rep;
+    return pack;
+  };
+
+  // ready: kwa PARACHA ya production inahitaji sandbox — trigger ya milestones host
+  // inawaliza kama `cuEnabled()` (sandbox inaweza kufunguliwa). Kwa tests za CI (hakuna e2b),
+  // host hailizi na full cycle unapimwa na mocks (orchestrate.test).
+  const ready = cuEnabled();
+  const reason = ready
+    ? "harness iko tayari (cuEnabled) — sandbox itafunguka kwa kufika dart"
+    : "CU engine haikuwezeshwa mazingira haya (hakuna E2B) — trigger imezimwa";
 
   return { deps, ready, reason };
 }

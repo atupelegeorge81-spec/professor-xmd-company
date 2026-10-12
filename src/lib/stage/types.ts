@@ -238,6 +238,29 @@ export interface SummaryItem {
   locked: number; superseded: number; open: number; sources: number; requests: number;
 }
 
+/** milestone/raundi chip (kwa UI strip + msStart/msChip items) */
+export interface MilestoneDef {
+  id: string; title: string; total?: number; index?: number;
+  status?: "DISCUSSING" | "PLANNING" | "BUILDING" | "REVIEW_R0" | "FIXING" | "VERIFYING" | "INHERITED" | "SIGNED_OFF" | "SIGNED_OFF_WITH_WAIVERS" | "CAP_REACHED" | "BLOCKED" | "WAIT_VISION";
+  round?: number; maxRounds?: number;
+}
+
+/** # msStart — card ya "milestone inawanzishwa" (uamuzi Q-003 wa mmiliki) */
+export interface MsStartItem {
+  kind: "msStart"; id: string;
+  milestone: MilestoneDef;
+  planSteps?: number;
+  planTitle?: string;
+  shown: number;
+}
+/** # msChip — chip ya hali ya milestone/round (updatable) */
+export interface MsChipItem {
+  kind: "msChip"; id: string;
+  milestone: MilestoneDef;
+  locus?: "start" | "review" | "build" | "signoff" | "cap";
+  retryCount?: number;
+}
+
 /* ---------------- R31 · XMD Computer (engine: cu/*) ----------------
  * UI ya CU ni TIMELINE (kama xmd3): kila tukio lina StageItem yake kwenye
  * mkondo (cuThink/cuText/cuExec/cuShot/cuLink/cuError). CuRunItem ni card ya
@@ -322,6 +345,7 @@ export type StageItem =
   | TaskItem | MemoryItem | SealItem | ObserversItem | SupersedeItem | OverruledItem
   | ValidatorItem | AssemblyItem | ReportItem | PlanItem | NoticeItem | SummaryItem
   | CuRunItem | CuReportItem | CuPauseItem
+  | MsStartItem | MsChipItem
   | CuThinkItem | CuTextItem | CuExecItem | CuShotItem | CuLinkItem | CuHookItem | CuErrorItem | CuDividerItem;
 
 /* ---------------- live stage (StageRail) ---------------- */

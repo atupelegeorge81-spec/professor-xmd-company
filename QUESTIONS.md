@@ -1,7 +1,11 @@
 # QUESTIONS.md — Maswali ya utekelezaji (maelezo.md sheria ya 0.4)
 
 Format: (a) ulichokuwa unafanya · (b) ulichokikuta · (c) chaguo · (d) pendekezo.
-**[HALI] zinangoja majibu ya mmiliki — utekelezaji unaendelea kutumia pendekezo ililoandikwa.**
+**[HALI] YOTE YAJIBIWA na mmiliki 2026-10-12.**
+
+- Q-001 → CHAGUO 2 (oh_bridge default ya R51; claude haiondolewi).
+- Q-002 → Harness ifanye push/deploy (Computer haoni tokens; cu engine amri za server-side, redacted).
+- Q-003 → [MALIILIKE] UI iwe **CARD kamili kama ya agenda** (si badge): agent akimaliza kupanga agenda, card ya milestone inakuja na muonekano vilevile wa card ya agenda.
 
 ---
 
