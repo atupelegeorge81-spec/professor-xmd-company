@@ -1522,11 +1522,16 @@ export function savedToEvents(items: SavedItem[], project: string): AdapterEvent
         for (const m of run?.map?.milestones || []) {
           const s = states[m.id] || {};
           out.push({ type: "milestone", milestone: { id: m.id, title: String(m.title || m.id), status: String(s.status || "DISCUSSING"), round: Number(s.round) || 0, maxRounds: Number(s.maxRounds) || 10, mode: m.reviewMode, active: run.currentMilestoneId === m.id } } as AdapterEvent);
+          // Q-003: milestones zilizoanzishwa — card zirudi (dedupe inakabili kama item ya msStart ipo tayari)
+          if (String(s.status || "DISCUSSING") !== "DISCUSSING") {
+            out.push({ type: "msStart", milestone: { id: m.id, title: String(m.title || m.id), total: run?.map?.milestones?.length, index: undefined, status: String(s.status || "PLANNING"), round: Number(s.round) || 0, maxRounds: Number(s.maxRounds) || 10 } } as AdapterEvent);
+          }
         }
       } catch { /* chip chafu — ruka kimya */ }
     }
     else if (it.kind === "chip" && it.text && !HIDDEN.test(it.text)) out.push({ type: "system", text: it.text });
     else if (it.kind === "round") out.push({ type: "round", round: it.round || 0, total: it.total || 0 });
+    else if ((it as any).kind === "msStart") out.push({ type: "msStart", milestone: (it as any).milestone } as AdapterEvent);
     else if (it.kind === "msg") {
       const id = it.id || nid();
       out.push({ type: "msg_start", id, agentId: it.agentId || "pm" });

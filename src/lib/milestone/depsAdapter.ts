@@ -47,6 +47,18 @@ export function milestoneDepsFor(args: DepsAdapterArgs): { deps: Partial<Orchest
   };
 
   // --- collectEvidence (P4 HALISI): sandbox ya cu kwakufanya evidence.py + checks ya code ---
+  // --- P8-REST: 10.3.b — SUBIRI lane yenye vision kwa SIGN-OFF (hatukama sign na mechi ijali) ---
+  deps.awaitVisionLane = async (reason: string): Promise<boolean> => {
+    args.cuHooks?.blog?.("info", `👁️ vision lane: ${reason} — tunasubiri hadi juu ya dakika 3 kwa kujaribu tena (10.3.b).`);
+    for (let t = 0; t < 4; t++) {
+      await new Promise((res) => setTimeout(res, 45_000));
+      // Rekodi ni rahisi tu: subiri, na judgeChat yeneye `requireVision: true` ndani ya verify ni ya majaribio — kwamba kutegemea lane
+      // Inakula kwa counter: ilikuwa verifyRound imeendeshwa (anakuja tena mara baadae); subiri tena — mwishoni, false (ivisionOk ap conciliator)
+    }
+    args.cuHooks?.blog?.("warning", "⚠️ vision lane bado haikutokea baada ya majaribio — sign-off imezuiwe (10.3.b: badrenge mechi).");
+    return false;
+  };
+
   deps.collectEvidence = async (milestone, round, rep, run) => {
     const runner = args.runner as any;
     const cu = runner?.cu;

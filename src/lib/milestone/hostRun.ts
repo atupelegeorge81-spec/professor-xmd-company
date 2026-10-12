@@ -5,7 +5,7 @@ import { runMilestonePipeline, type OrchestratorDeps, type MilestonePipelineResu
 import { writeMilestonesState } from "./state";
 import { generateMilestonePlan } from "./planGen";
 import * as review from "./reviewLLM";
-import type { MilestonesRunState } from "./types";
+import type { LaneCall, MilestonesRunState } from "./types";
 
 export interface HostRunHooks {
   blog: (level: "info" | "success" | "warning" | "error" | "system", msg: string) => void;
@@ -57,6 +57,15 @@ export async function runMilestonesHost(args: HostRunArgs): Promise<HostRunResul
   const { run, hooks } = args;
   const results: MilestonePipelineResult[] = [];
   const signedOff: string[] = [];
+
+/** P8-REST: rekodi ya lane kwa kila call ya hukumu (10.4). */
+function recordJudgeLane(run: MilestonesRunState, partial: { stepId: string; tier: string; provider?: string; model?: string; visionCapable: boolean; fallback: boolean }): void {
+  const mid = run.currentMilestoneId || "?";
+  const st = run.states?.[mid];
+  const call: LaneCall = { call: `${partial.stepId}.${Date.now().toString(36)}`, lane: partial.tier, visionCapable: partial.visionCapable, fallback: partial.fallback || undefined };
+  if (st) { st.lanesUsed = [...(st.lanesUsed || []), call].slice(-500); }
+}
+
   const incomplete: string[] = [];
 
   // deps halisi za LLM (P3 wiring); computerBuild/collectEvidence hutoka args.deps (injini/harness)
@@ -75,12 +84,14 @@ export async function runMilestonesHost(args: HostRunArgs): Promise<HostRunResul
       });
       return { md: plan.md, title: plan.title, checks: plan.checks, blocked: plan.blocked, errors: plan.errors };
     },
-    analyse: review.llmAnalyse({ waitNote: (m) => hooks.blog("info", m) }),
-    discussAndMerge: review.llmDiscussAndMerge({ waitNote: (m) => hooks.blog("info", m) }),
-    verifyRound: review.llmVerifyRound({ waitNote: (m) => hooks.blog("info", m) }),
-    rewriteConcrete: review.llmRewriteConcrete({}),
-    pairPatch: review.llmPairPatch({}),
-    redecide: review.llmRedecide({}),
+    // P8-REST (maelezo 10.2–10.4): rekodi ya lane kwa KILA call ya judge + rekodi ya visionDegraded staki-runner.
+    // onLane inaitwa baada ya judgeClient kufaulu — inakilisha LaneCall kwenye hali ya milestone.
+    analyse: review.llmAnalyse({ waitNote: (m) => hooks.blog("info", m), onLane: (rec) => recordJudgeLane(run, { stepId: `M.Review.analyse`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
+    discussAndMerge: review.llmDiscussAndMerge({ waitNote: (m) => hooks.blog("info", m), onLane: (rec) => recordJudgeLane(run, { stepId: `M.Review.merge`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
+    verifyRound: review.llmVerifyRound({ waitNote: (m) => hooks.blog("info", m), onLane: (rec) => recordJudgeLane(run, { stepId: `M.Verify`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
+    rewriteConcrete: review.llmRewriteConcrete({ onLane: (rec) => recordJudgeLane(run, { stepId: `M.Co.rewrite`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
+    pairPatch: review.llmPairPatch({ onLane: (rec) => recordJudgeLane(run, { stepId: `M.Co.pairPatch`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }) }),
+    redecide: review.llmRedecide({ onLane: (rec) => recordJudgeLane(run, { stepId: `M.Co.redecide`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }), vision: true, waitNote: (m) => hooks.blog("info", m) }),
     ...(args.deps || {}),
   } as OrchestratorDeps;
 
@@ -99,6 +110,16 @@ export async function runMilestonesHost(args: HostRunArgs): Promise<HostRunResul
     if (args.concurrencySignal?.aborted) break;
 
     hooks.bcast({ type: "milestone", id: mid, index: run.map.milestones.findIndex((x) => x.id === mid) + 1, total: run.map.milestones.length });
+    // Q-003 (uamuzi wa mmiliki): card kamili kama agenda inapoanza milele — bcast + persistence
+    {
+      const mdef = run.map.milestones.find((x) => x.id === mid);
+      const payload = { id: mid, title: mdef?.title || mid, total: run.map.milestones.length, index: run.map.milestones.findIndex((x) => x.id === mid) + 1, status: "PLANNING", maxRounds: run.states?.[mid]?.maxRounds || 10 };
+      hooks.bcast({ type: "msStart", milestone: payload });
+      if (!(args.runner.items as unknown[]).some((x) => (x as { kind?: string; milestone?: { id?: string } }).kind === "msStart" && (x as { milestone?: { id?: string } }).milestone?.id === mid)) {
+        (args.runner.items as unknown[]).push({ kind: "msStart", id: `ms_start_${mid.toLowerCase()}_${Date.now().toString(36)}`, milestone: payload, shown: 1, createdAt: new Date().toISOString() });
+        await hooks.persist(`milestone_start_${mid.toLowerCase()}`).catch(() => {});
+      }
+    }
     hooks.addChip(` Milestone ${mid} (${run.map.milestones.find((x) => x.id === mid)?.title || mid}) — Optimus anaandika Mpango → Computer anajenga → ukaguzi.`);
     try {
       const r = await runMilestonePipeline(args.runner.items, run, deps, mid);
