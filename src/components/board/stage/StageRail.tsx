@@ -62,6 +62,29 @@ export function StageRail({ stage, agenda, live }: { stage: LiveStage; agenda: A
             </a>
           );
         })}
+        {/* P2 (maelezo.md 14.P2): strip ndogo ya milestones — hali ya kila moja kwa mstari */}
+        {!!stage.milestones?.length && (
+          <>
+            <span className="mx-1 h-4 w-px shrink-0 bg-[var(--color-line)]" />
+            {stage.milestones.map((m) => {
+              const tone =
+                m.status === "SIGNED_OFF" ? TONE.ok
+                : m.status === "SIGNED_OFF_WITH_WAIVERS" || m.status === "CAP_REACHED" ? TONE.warn
+                : m.status === "BLOCKED" ? TONE.bad : null;
+              return (
+                <span key={m.id} title={`${m.title} · ${m.status}${m.round ? ` · raundi ${m.round}/${m.maxRounds}` : ""} · ${m.mode}`}
+                  className={cn("flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[10.5px] font-semibold", m.active ? "prism-border text-[var(--color-fg)]" : "border-[var(--color-line)] text-[var(--color-muted)]")}
+                  style={tone ? { color: tone.c, borderColor: `rgb(${tone.rgb} / 0.35)`, background: `rgb(${tone.rgb} / 0.08)` } : undefined}>
+                  {m.status === "SIGNED_OFF" ? <Lock size={10} /> : m.active ? <span className="h-1.5 w-1.5 rounded-full bg-prism animate-pulse" /> : null}
+                  {m.id}
+                  {(m.status === "FIXING" || m.status === "VERIFYING") && (
+                    <span className="font-mono font-normal opacity-80">R{m.round}</span>
+                  )}
+                </span>
+              );
+            })}
+          </>
+        )}
         <span className={cn("flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[10.5px] font-semibold", inFinale ? "prism-border text-[var(--color-fg)]" : "border-[var(--color-line)] text-[var(--color-faint)]")}>
           <Sparkles size={10} /> Finale
         </span>

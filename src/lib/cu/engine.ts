@@ -66,6 +66,10 @@ export interface CuEvent {
 }
 
 /** Hali ya run ya computer (in-memory, kwenye runner). */
+/** P0 (maelezo.md 12.1, kosa #1): hali za mwisho ZILIZO WAZI za awamu ya Computer.
+ *  COMPLETED_VERIFIED = done + ripoti; nyingine zote si mafanikio (asipendekeza "stuck" akae kama success). */
+export type CuTerminal = "COMPLETED_VERIFIED" | "PARTIAL" | "STUCK" | "BLOCKED" | "PAUSED_QUOTA" | "ERROR";
+
 export interface CuRunState {
   token: string;
   sandboxId?: string;
@@ -79,6 +83,8 @@ export interface CuRunState {
   files?: unknown[];
   reportSaved?: boolean;
   done: boolean;
+  /** P0: hali ya mwisho iliyo wazi (12.1) — huwekwa na finishComputer/pauseComputer; chip inabeba. */
+  terminal?: CuTerminal;
   startedAt: number;
   usage: { requests: number; tokens: number; prompt: number; completion: number };
   execs: Map<string, any>;
@@ -129,6 +135,8 @@ export interface CuChip {
   snapshot?: { fileId: string; bucketId: string };
   /** R44-B: kifo cha sandbox — resume inarestore kutoka kiovu (cu_files) + ujumbe wa deps. */
   rebuild?: boolean;
+  /** P0 (12.1): hali ya mwisho ya awamu iliyotangulia (COMPLETED_VERIFIED/PARTIAL/STUCK/BLOCKED/PAUSED_QUOTA/ERROR). */
+  terminal?: string;
 }
 export const isHiddenCuChip = (it: any) => it?.kind === "chip" && typeof it?.text === "string" && it.text.startsWith(CU_PREFIX);
 export function cuChipItem(s: CuChip) {
@@ -176,6 +184,7 @@ export function ensureCuState(runner: Runner, token?: string): CuRunState {
       resumeAt: chip?.resumeAt,
       snapshot: chip?.snapshot,
       rebuild: !!chip?.rebuild, // R44-B: kifo cha sandbox — restore kutoka kiovu
+      terminal: chip?.terminal as CuRunState["terminal"], // P0: hali ya mwisho ya awamu iliyotangulia
     };
     for (const it of runner.items as any[]) {
       if (it?.kind === "cu" && typeof it.i === "number") runner.cu.seen.add(`${it.cu}:${it.i}`);
@@ -301,13 +310,18 @@ async function planDocFor(runner: Runner): Promise<ProjectPlanDoc | null> {
   return runner.sessionId ? await getPlanBySession(runner.sessionId) : null;
 }
 
-export async function planMarkdown(runner: Runner): Promise<{ title: string; md: string; steps: number } | null> {
+export async function planMarkdown(runner: Runner): Promise<{ title: string; md: string; steps: number; blocked?: boolean; blockReason?: string } | null> {
   const doc = await planDocFor(runner);
   if (!doc) return null;
+  // P0 (kosa #3 / 4.5): status ya plan lazima isomwe — "guard_failed" HAIKUTEKELEZWI kamwe.
+  const status = String((doc as any).status || "active");
+  const blocked = status === "guard_failed";
   return {
     title: doc.title || runner.project.slice(0, 120),
     md: unpack(doc.plan_content) || doc.plan_content || doc.objective || "",
     steps: doc.total_steps || 0,
+    blocked,
+    blockReason: blocked ? "Mpango Kazi umerudishwa na Data Guard (guard_failed) — data rasmi hazikupatikana kwenye maandishi ya mpango." : undefined,
   };
 }
 
@@ -411,7 +425,26 @@ function bridgeCommand(o: {
 
 /* ============================ PHASE: kuanza / kuendelea ============================ */
 
-export async function startComputerPhase(runner: Runner, hooks: CuHooks): Promise<void> {
+export interface CuPhaseOpts {
+  /** P3 (maelezo.md 4.6): mpango MAALUM wa milestone au raundi (hupotinga planDocFor kabisa).
+   *  caller (orchestrator) tayari amepima Data Guard — hii ni mpango andaa wa kutekelezwa. */
+  planOverride?: { title: string; md: string; steps: number };
+  phaseLabel?: string; // "M1 ujenzi" / "M1 raundi 3 ya marekebisho"
+  /** OCB-C + mkataba wa kumaliza (6.3) unaoboreshwa kwenye agizo la awamu — siradi ya CLAUDE.md */
+  extraBrief?: string;
+}
+
+/** P3: anzisha awamu MPYA ya Computer (milestone/raundi inayofuata) — cu state ipwe mipya;
+ *  chip ya zamani inaondolewa (token mpya = events za sandbox ya zamani zinapuuzwa). */
+export function beginNewCuPhase(runner: Runner): void {
+  const idx = (runner.items as any[]).findIndex((x: any) => x?.kind === "chip" && x?.id === CU_CHIP_ID);
+  if (idx >= 0) runner.items.splice(idx, 1);
+  delete (runner as any).cu;
+  ensureCuState(runner);
+  writeCuChip(runner);
+}
+
+export async function startComputerPhase(runner: Runner, hooks: CuHooks, opts?: CuPhaseOpts): Promise<void> {
   const cu = ensureCuState(runner);
   if (cu.done) return;
   // R38-RC5: awamu inaanza → pause ya ZAMANI inaisha (events mpya za bridge zinakubalika tena)
@@ -439,11 +472,18 @@ export async function startComputerPhase(runner: Runner, hooks: CuHooks): Promis
   // ── divider + card ya kuanza (baada ya card ya MWISHO kabisa ya Board — memory imekamilika)
   hooks.bcast({ type: "cu", cu: { type: "divider" } });
   runner.items.push({ kind: "cu", id: `cu_divider_${runner.items.length}`, cu: "divider" } as any);
-  hooks.blog("system", "🖥️ Awamu ya XMD COMPUTER inaanza — agent anatekeleza Mpango Kazi (E2B sandbox).");
+  hooks.blog("system", `🖥️ Awamu ya XMD COMPUTER inaanza${opts?.phaseLabel ? ` — ${opts.phaseLabel}` : " — agent anatekeleza Mpango Kazi (E2B sandbox)"}.`);
 
-  const plan = await planMarkdown(runner);
+  const plan = opts?.planOverride
+    ? { title: opts.planOverride.title, md: opts.planOverride.md, steps: opts.planOverride.steps, blocked: false as const, blockReason: undefined as string | undefined }
+    : await planMarkdown(runner);
   if (!plan) {
     cuError(runner, hooks, "Mpango Kazi haukupatikana kwenye project_plans — computer-use haiwezi kuanza.");
+    return;
+  }
+  // P0 (kosa #3): mpango ulioshindwa Data Guard HAUTEKELEZWI — hata endapo una plan_content kamili.
+  if (plan.blocked) {
+    cuError(runner, hooks, `🛡️ ${plan.blockReason || "Mpango umezuiwa na Data Guard"} Rekebisha data rasmi / uandishi wa mpango, kisha anza upya cu.`);
     return;
   }
 
@@ -1061,6 +1101,7 @@ function pauseComputer(runner: Runner, hooks: CuHooks | null, ev: CuEvent): void
   if (cu.persistTimer) { clearTimeout(cu.persistTimer); cu.persistTimer = undefined; } // race: timer isiandike "running" juu ya "paused"
   cu.pausedOnce = true;
   cu.pausedNow = true;
+  cu.terminal = "PAUSED_QUOTA"; // P0 (12.1): pause ni hali ya mwisho iliyo wazi ya awamu hii
   const resumeAt = Number((ev as any).resume_at) || 0;
   cu.resumeAt = resumeAt;
   runner.items.push({ kind: "cu", id: `cu_pause_${runner.items.length}`, i: ev.i, cu: "pause", resumeAt, ms: ev.ms, steps: ev.steps } as any);
@@ -1210,7 +1251,15 @@ function finishComputer(runner: Runner, hooks: CuHooks | null, ev: CuEvent): voi
   stopHeartbeat(cu);
   if (cu.persistTimer) { clearTimeout(cu.persistTimer); cu.persistTimer = undefined; } // race: "running" isiandike juu ya status ya mwisho
   const status = String(ev.status || "done");
-  const ok = !!cu.report && status !== "error";
+  // P0 (12.1 / kosa #1): hali ya mwisho iliyo WAZI — haijategemei "kukosekana kwa error" tena.
+  // "stuck" + report haikupaswi kupiga mafanikio; "partial"/"blocked" ni matokeo ya kweli kwenye ledger.
+  const terminal: CuTerminal =
+    status === "done" ? "COMPLETED_VERIFIED" :
+    status === "partial" ? "PARTIAL" :
+    status === "stuck" ? "STUCK" :
+    status === "blocked" ? "BLOCKED" : "ERROR";
+  cu.terminal = terminal;
+  const ok = terminal === "COMPLETED_VERIFIED" && !!cu.report;
 
   // tree ya mwisho ya files (Files badge ya replay) — kwa Ujumla hii ndiyo kamili zaidi
   const treeFinal = cu.files || [];
@@ -1222,7 +1271,7 @@ function finishComputer(runner: Runner, hooks: CuHooks | null, ev: CuEvent): voi
   }
 
   runner.items.push({
-    kind: "cu", id: `cu_end_${runner.items.length}`, i: ev.i, cu: "run_end", status,
+    kind: "cu", id: `cu_end_${runner.items.length}`, i: ev.i, cu: "run_end", status, terminal,
     steps: ev.steps, ms: ev.ms, github: cu.links.repo, live: cu.links.live,
     tokens: cu.usage.tokens, requests: cu.usage.requests,
   } as any);
@@ -1245,11 +1294,14 @@ function finishComputer(runner: Runner, hooks: CuHooks | null, ev: CuEvent): voi
 
   // chip ya CU state (resume + Files badge) + persist ya mwisho — R31-G4: status ya MWISHO
   // (kosa la G: ilikuwa inaendelea "running" hata CU ikisha — session ya login iliwa "running").
+  // chip ya CU state (resume + Files badge) + persist ya mwisho — R31-G4: status ya MWISHO
+  // (kosa la G: ilikuwa inaendelea "running" hata CU ikisha — session ya login iliwa "running").
+  // P0: hali za mwisho zilizo wazi kwenye session status (12.1) — "finale_partial"/"finale_stuck"…
   cu.phaseResolve?.();
   writeCuChip(runner);
   if (hooks) {
-    void hooks.persist(ok ? "completed" : "finale_incomplete", hooks.title);
-    hooks.bcast({ type: "cu", cu: { type: "phase_done", ok, status } });
+    void hooks.persist(ok ? "completed" : `finale_${terminal.toLowerCase()}`, hooks.title);
+    hooks.bcast({ type: "cu", cu: { type: "phase_done", ok, status, terminal } });
   }
 }
 
@@ -1259,6 +1311,7 @@ export function cuChipItemOf(runner: Runner): ReturnType<typeof cuChipItem> {
     v: 1, sandboxId: cu.sandboxId, token: cu.token, maxI: cu.maxI,
     repo: cu.links.repo, live: cu.links.live, done: cu.done, files: cu.files, report: cu.report,
     pausedOnce: cu.pausedOnce, resumeAt: cu.resumeAt, snapshot: cu.snapshot, rebuild: !!cu.rebuild,
+    terminal: cu.terminal, // P0: hali ya mwisho iliyo wazi (resume/survival sweep inasoma)
   });
 }
 

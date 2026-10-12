@@ -71,6 +71,8 @@ export type BoardEvent =
   | { type: "cu"; cu: { type: string; i?: number; [k: string]: unknown } }
   /** R31-G5: mode ya session (plan/code) — adapter hai-classify script/patch/review kwenye plan mode */
   | { type: "mode"; mode: "code" | "plan" }
+  /** P2 (maelezo.md): onyesho dogo la milestone (ramani iliyotengenezwa, mabadiliko ya hali) */
+  | { type: "milestone"; milestone: { id: string; title: string; status: string; round: number; maxRounds: number; mode: "visual" | "technical" | "mixed"; active: boolean } }
   | { type: "error"; message: string }
   | { type: "done" };
 

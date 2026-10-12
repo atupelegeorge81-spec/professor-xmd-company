@@ -1,0 +1,745 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > OCB-C (6.3): mkataba wa kumaliza + wakaguzi + ⚠️ CONFLICT 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: ujenzi | Milestone M1: Msingi (agenda 1–3) 1/2 | RAUNDI 0/10
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: ushahidi
+MATOKEO YAKO YATASOMWA NA: timu nzima ya Board (na Computer anapokaguliwa kutegemea matokeo yako)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ===
+=== TOLEO LA COMPUTER (OCB-C) — soma kwa makini ===
+UKO HAPA SASA: ujenzi wa mwanzo wa milestone hii — M1: Msingi.
+KAZI YAKO ITAKAGULIWA: wakaguzi wawili (Designer + Frontend) wataichambua kazi yako pamoja na vipimo vya code (harness).
+Unatarajiwa kurudisha RISITI kwa kila Agizo la Mabadiliko (CO): faili zilizoguswa, kabla/baada, amri ulizoendesha.
+HUTAMALIZA hadi: (a) Ripoti ya Milestone imeandikwa na sehemu zake zote zimejazwa, (b) vipimo vya harness vimeendeshwa, (c) git commit imefanyika.
+CO ikirudiwa, ina maana jaribio lililopita halikutosha — tekeleza upya kwa uhakika zaidi.
+USIJIPE ALAMA; harness itapima. Ukikuta sheria zinazogongana (mpango dhidi ya maagizo mengine):
+andika '⚠️ CONFLICT' kwenye ripoti, tumia thamani ya ledger/Official Data, kisha endelea (hakuna kituo cha kuuliza CEO).
+=== MWISHO WA OCB-C ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > backend @ kuchambua ramani ya milestones 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: kuchambua ramani ya milestones | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: mjadala wa agenda 1
+MATOKEO YAKO YATASOMWA NA: Board nzima
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > backend @ kupanga Mpango wa Milestone (M1) 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: kupanga Mpango wa Milestone (M1) | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: Computer anajenga
+MATOKEO YAKO YATASOMWA NA: XMD Computer — atatekeleza neno kwa neno
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > backend @ mjadala wa agenda 2 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: mjadala wa agenda 2 | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: kufungwa kwa agenda 2 → ledger
+MATOKEO YAKO YATASOMWA NA: Optimus (mini-report)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > backend @ ukaguzi wa Raundi 0: uchambuzi wa kujitegemea 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: ukaguzi wa Raundi 0: uchambuzi wa kujitegemea | Milestone M1: Msingi (agenda 1–3) 1/2 | RAUNDI 0/10
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: mjadala wa timu → CO
+MATOKEO YAKO YATASOMWA NA: wakaguzi wenzake (kwa mjadala)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > backend @ uthibitisho wa raundi 2 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: uthibitisho wa raundi 2 | Milestone M1: Msingi (agenda 1–3) 1/2 | RAUNDI 2/10
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: hukumu ya CO → Optimus
+MATOKEO YAKO YATASOMWA NA: Optimus (sign-off gate)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > designer @ kuchambua ramani ya milestones 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: kuchambua ramani ya milestones | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: mjadala wa agenda 1
+MATOKEO YAKO YATASOMWA NA: Board nzima
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > designer @ kupanga Mpango wa Milestone (M1) 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: kupanga Mpango wa Milestone (M1) | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: Computer anajenga
+MATOKEO YAKO YATASOMWA NA: XMD Computer — atatekeleza neno kwa neno
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > designer @ mjadala wa agenda 2 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: mjadala wa agenda 2 | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: kufungwa kwa agenda 2 → ledger
+MATOKEO YAKO YATASOMWA NA: Optimus (mini-report)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > designer @ ukaguzi wa Raundi 0: uchambuzi wa kujitegemea 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: ukaguzi wa Raundi 0: uchambuzi wa kujitegemea | Milestone M1: Msingi (agenda 1–3) 1/2 | RAUNDI 0/10
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: mjadala wa timu → CO
+MATOKEO YAKO YATASOMWA NA: wakaguzi wenzake (kwa mjadala)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > designer @ uthibitisho wa raundi 2 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: uthibitisho wa raundi 2 | Milestone M1: Msingi (agenda 1–3) 1/2 | RAUNDI 2/10
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: hukumu ya CO → Optimus
+MATOKEO YAKO YATASOMWA NA: Optimus (sign-off gate)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > frontend @ kuchambua ramani ya milestones 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: kuchambua ramani ya milestones | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: mjadala wa agenda 1
+MATOKEO YAKO YATASOMWA NA: Board nzima
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > frontend @ kupanga Mpango wa Milestone (M1) 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: kupanga Mpango wa Milestone (M1) | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: Computer anajenga
+MATOKEO YAKO YATASOMWA NA: XMD Computer — atatekeleza neno kwa neno
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > frontend @ mjadala wa agenda 2 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: mjadala wa agenda 2 | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: kufungwa kwa agenda 2 → ledger
+MATOKEO YAKO YATASOMWA NA: Optimus (mini-report)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > frontend @ ukaguzi wa Raundi 0: uchambuzi wa kujitegemea 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: ukaguzi wa Raundi 0: uchambuzi wa kujitegemea | Milestone M1: Msingi (agenda 1–3) 1/2 | RAUNDI 0/10
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: mjadala wa timu → CO
+MATOKEO YAKO YATASOMWA NA: wakaguzi wenzake (kwa mjadala)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > frontend @ uthibitisho wa raundi 2 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: uthibitisho wa raundi 2 | Milestone M1: Msingi (agenda 1–3) 1/2 | RAUNDI 2/10
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: hukumu ya CO → Optimus
+MATOKEO YAKO YATASOMWA NA: Optimus (sign-off gate)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > pm @ kuchambua ramani ya milestones 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: kuchambua ramani ya milestones | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: mjadala wa agenda 1
+MATOKEO YAKO YATASOMWA NA: Board nzima
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > pm @ kupanga Mpango wa Milestone (M1) 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: kupanga Mpango wa Milestone (M1) | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: Computer anajenga
+MATOKEO YAKO YATASOMWA NA: XMD Computer — atatekeleza neno kwa neno
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > pm @ mjadala wa agenda 2 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: mjadala wa agenda 2 | Milestone M1: Msingi (agenda 1–3) 1/2
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: kufungwa kwa agenda 2 → ledger
+MATOKEO YAKO YATASOMWA NA: Optimus (mini-report)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > pm @ ukaguzi wa Raundi 0: uchambuzi wa kujitegemea 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: ukaguzi wa Raundi 0: uchambuzi wa kujitegemea | Milestone M1: Msingi (agenda 1–3) 1/2 | RAUNDI 0/10
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: mjadala wa timu → CO
+MATOKEO YAKO YATASOMWA NA: wakaguzi wenzake (kwa mjadala)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;
+
+exports[`P1·milestones · OCB snapshots (kila hatua × jukumu) > pm @ uthibitisho wa raundi 2 1`] = `
+"=== MAZINGIRA YA OPERESHENI (usiyapuuze) ===
+MRADI: Duka la Mitumba Temeke. Ombi la CEO kwa ufupi: duka la mtandaoni la nguo
+
+TIMU YETU:
+- Optimus: kiongozi, anaandika agenda, ramani ya milestones, mipango, ripoti ya mwisho.
+- Ultron: UI/UX Designer
+- Vextron: Frontend Engineer
+- Megatron: Backend & DB Engineer      (hayupo kwenye roster ya milestone hii)
+- XMD Computer: mhandisi anayejenga kwa vitendo kwenye sandbox. Anaandika code, anaendesha amri,
+  anapiga screenshots. HAONI mjadala wetu. Anajua tu: Mpango wa Milestone, ledger,
+  Maagizo ya Mabadiliko. Anachukua maagizo KWA NENO. Hawezi kuuliza maswali.
+
+MTIRIRIKO WA OPERESHENI:
+ 1) Agenda + ramani ya milestones (Optimus)
+ 2) Kwa kila milestone: mjadala wa agenda -> ledger + mini-reports
+ 3) Milestone ikifungwa: Optimus anaandika Mpango wa Milestone
+ 4) Computer anajenga + anaandika Ripoti ya Milestone
+ 5) Mfumo unakusanya ushahidi (picha/vipimo/matokeo ya amri)
+ 6) Wakaguzi wawili wanachambua, timu inajadili, Optimus anaandika Maagizo ya Mabadiliko
+ 7) Computer anarekebisha; ushahidi mpya; wakaguzi wanathibitisha (hadi RAUNDI 10)
+ 8) Wakipitisha: milestone inayofuata. Milestones zote zikiisha: Optimus anaandika Ripoti ya Mwisho kwa CEO,
+    Computer ana-push/deploy mwisho.
+
+UKO HAPA: uthibitisho wa raundi 2 | Milestone M1: Msingi (agenda 1–3) 1/2 | RAUNDI 2/10
+WANAOSHIRIKI MILESTONE HII: Optimus, Ultron, Vextron
+KINACHOFUATA: hukumu ya CO → Optimus
+MATOKEO YAKO YATASOMWA NA: Optimus (sign-off gate)
+
+HALI: maamuzi yaliyofungwa: 1; milestones zilizokamilika: hakuna bado; makosa wazi: 1; waivers: 0.
+KANUNI: ledger ndiyo mwamuzi; usipingane na maamuzi yaliyofungwa bila kuyaita 'ombi la mabadiliko';
+toa ushahidi (kitambulisho cha picha, kipimo, au matokeo ya amri) kwa kila dai.
+=== MWISHO WA MAZINGIRA ==="
+`;

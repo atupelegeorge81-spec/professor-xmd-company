@@ -1,0 +1,203 @@
+// src/lib/milestone/reviewLLM.ts — deps HALISI za OrchestratorDeps zinazopiga LLM kwa judge chain.
+// P5–P7 zitaziboresha kwa context packs kamili (9) na mjadala wa timu ×itifaki — hapa ni
+// skeleton "kufanya kazi" yenye validators (LLM output lazima ipite schema; kikosa → retry 3).
+import { judgeChat, type JudgeLaneRec } from "@/lib/broker/judge";
+import { parseJsonFromLLM, validateAnalystOutput, newDefectId } from "./schemas";
+import type {
+  AnalystOutput, ChangeOrder, EvidencePack, Milestone, MilestonesRunState, ReviewSignature,
+} from "./types";
+
+/* ============ digest ya evidence kwa prompt (muhtasari — sio pack nzima) ============ */
+
+export function evidenceDigest(ev: EvidencePack): string {
+  const L: string[] = [];
+  L.push(`Picha: ${ev.screenshots.length}${ev.screenshots.length ? ` — ${ev.screenshots.map((s) => `${s.id} (${s.route}@${s.viewport}${s.state !== "default" ? "/" + s.state : ""})`).join(", ")}` : ""}`);
+  if (ev.domMetrics.length) L.push(`Vipimo vya DOM: ${ev.domMetrics.length} rundo za JSON`);
+  const fails = ev.checks.filter((c) => c.result === "FAIL");
+  L.push(`Checks: ${ev.checks.length} (${fails.length} FAIL${fails.length ? `: ${fails.map((c) => `${c.id}[${c.type}: ${c.detail.slice(0, 90)}]`).join("; ")}` : ""})`);
+  if (ev.commands.length) L.push(`Amri: ${ev.commands.map((c) => `${c.cmd} → exit ${c.exit}`).join("; ")}`);
+  L.push(`Git diff: faili ${ev.gitDiffSummary.filesChanged}, +${ev.gitDiffSummary.insertions}/-${ev.gitDiffSummary.deletions}`);
+  if (ev.regression.length) L.push(`Regression: ${ev.regression.map((r) => `${r.route}@${r.viewport} ${r.changedPct}%`).join("; ")}`);
+  if (ev.consoleErrors.length) L.push(`Console errors: ${ev.consoleErrors.slice(0, 6).join(" | ")}`);
+  return L.join("\n");
+}
+
+/* ============ dependencies adapters kwa orchestrator ============ */
+
+export interface JudgeCallOpts {
+  onLane?: (rec: JudgeLaneRec) => void;
+  vision?: boolean;
+  signal?: AbortSignal;
+  waitNote?: (msg: string) => void;  // sign-off-wait maelezo
+  effort?: "low" | "medium" | "high";
+  maxTokens?: number;
+}
+
+export async function judgeText(callName: string, agentId: string, system: string, user: string, o?: JudgeCallOpts & { maxTokens?: number; effort?: "low" | "medium" | "high" }): Promise<string | null> {
+  for (let t = 0; t < 4; t++) {
+    const r = await judgeChat({
+      agentId, call: callName,
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      maxTokens: o?.maxTokens ?? 3000,
+      requireVision: o?.vision,
+      signal: o?.signal,
+      effort: o?.effort,
+    });
+    if (r.ok) { o?.onLane?.(r.rec); return r.text; }
+    if ("wait" in r) {
+      o?.waitNote?.(`⏳ ${r.wait.reason}${r.wait.until ? ` (hadi ${new Date(r.wait.until).toLocaleTimeString("en-GB", { timeZone: "Africa/Dar_es_Salaam" })})` : ""} — subiri…`);
+      await new Promise((res) => setTimeout(res, 45_000));
+      continue;
+    }
+      o?.waitNote?.(`⚠️ ${r.error} — kujaribu tena (${t + 1}/4)`);
+  }
+  o?.waitNote?.(`❌ judgeChat wote wamekata baada ya majaribio 4 kwa call "${callName}"`);
+  return null;
+}
+
+/** Retry logic: jibu batili (JSON k. parse) → onyo lililoboreshwa; baada ya 3, hapana. */
+async function llmJson<T>(callName: string, agentId: string, system: string, user: string, parse: (x: unknown) => { ok: boolean; value?: T; errors?: string[] }, o?: JudgeCallOpts): Promise<T | null> {
+  let extra = "";
+  for (let t = 0; t < 3; t++) {
+    const text = await judgeText(callName, agentId, system, user + extra, o);
+    if (text == null) return null;
+    const raw = parseJsonFromLLM(text);
+    if (!raw) { extra = `\n\n\(JIBU LILILOTANGULIA HALIKUWA NA JSON INAYOSOMEKA. Andika JSON pekee.\)`; continue; }
+    const v = parse(raw);
+    if (v.ok) return v.value as T;
+    extra = `\n\n\(MAKOSA YA JIBU LILILOTANGULIA (rekebisha):\n${(v.errors || []).map((e) => `- ${e}`).join("\n")}\nAndika tena JSON pekee.\)`;
+  }
+  return null;
+}
+
+/* ============ Uchambuzi wa mkaguzi (Raundi 0) ============ */
+
+export function llmAnalyse(o?: JudgeCallOpts) {
+  return async (reviewerId: string, inp: { milestone: Milestone; evidence: EvidencePack; run: MilestonesRunState }): Promise<AnalystOutput> => {
+    const system = [
+      `Wewe ni mkaguzi ${reviewerId} wa timu (kama Ultron kwa muundo/UX, Vextron kwa frontend, Megatron kwa backend, Cybertron kwa QA).`,
+      "Kagua ushahidi uliotolewa. Andika uchambuzi kwa ufupi na DEFECTS KAMA JSON.",
+      "Muundo: { reviewer, findings, defects: [{id na D khali, milestoneId, severity, title, expected, actual, evidence:[], area, foundInRound, reportedBy:[wewe]}], suggestions: [{title, detail}] }",
+      "Kila defect: severity blocker|major|medium|minor. Usisode ange dalili bila ushahidi (picha S-###, kipimo C-###, amri au DOM). Usitapatie alama PASS shangwe — wewe ni mkaguzi.",
+    ].join("\n");
+    const user = [
+      `MILESTONE: ${inp.milestone.id} — ${inp.milestone.title} (mode ${inp.milestone.reviewMode})`,
+      "",
+      "USHAHIDI:",
+      evidenceDigest(inp.evidence),
+    ].join("\n");
+    const out = await llmJson<AnalystOutput>(`${inp.milestone.id}.R0.${reviewerId}.analyse`, reviewerId, system, user, (x) => validateAnalystOutput(x), { ...o, effort: "high" });
+    return out || { reviewer: reviewerId, findings: "(uchambuzi ulishindwa baada ya majaribio — makosa yatarejewa)", defects: [], suggestions: [] };
+  };
+}
+
+/* ============ Mjadala wa timu + merge (Raundi 0) — Optimus anaunganisha ============ */
+
+export function llmDiscussAndMerge(o?: JudgeCallOpts) {
+  return async (inp: {
+    analyses: AnalystOutput[]; existingDefects: import("./types").Defect[]; run: import("./types").MilestonesRunState; milestone: Milestone;
+  }): Promise<{ cos: ChangeOrder[]; suggestionsLedgerNotes?: string[] }> => {
+    // Hapa code inaiongoza: CO zinatengenezwa kutoka defects zilizopo — LLM anafanya "merge + Tangazo".
+    // (P5 itaingiza mjadala wa timu ×itifaki kamili; kernela ya defects→CO inabaki hapa.)
+    const open = inp.existingDefects.filter((d) => d.milestoneId === inp.milestone.id && ["OPEN", "IN_FIX", "REOPENED"].includes(d.status));
+    const cos: ChangeOrder[] = [];
+    for (const d of open) {
+      if (inp.run.cos.some((c) => c.defectIds.includes(d.id) && c.attempt === d.attempts + 1)) continue;
+      const coId = `CO-${String(inp.run.cos.length + cos.length + 1).padStart(3, "0")}`;
+      const system = [
+        "Wewe ni Optimus. Kwa kosa iliotajwa, andika ChangeOrder (CO) ya kitaalamu: faili/route/selector, hali ya sasa → inayotakiwa, na 2-4 vipimo vya kukubalika (aina za 8.3: command, grep, dom_exists, computed_style, no_horizontal_overflow, console_clean, contrast_min, touch_target_min, http, file_exists, file_contains, screenshot_taken).",
+        "JIBU: JSON ya CO pekee: { id, defectIds:[id], attempt:1, priority:1, location:{files:[...], route?, selector?}, current, desired, visionNote?, acceptance: [ {...check} ], mode: 'standard' }",
+      ].join("\n");
+      const user = `Kosa: ${JSON.stringify({ id: d.id, title: d.title, expected: d.expected, actual: d.actual, evidence: d.evidence, area: d.area })}\nCO id: ${coId}`;
+      const co = await llmJson<ChangeOrder>(`${inp.milestone.id}.R0.merge.${d.id}`, "pm", system, user, (x) => {
+        const raw = x as any;
+        if (!raw || typeof raw !== "object") return { ok: false, errors: ["si object"] };
+        // validate baadaye kwa validateChangeOrder kwenye orchestrate; hapa rudisha ghafi
+        raw.id = raw.id || coId; raw.defectIds = raw.defectIds || [d.id]; raw.attempt = 1; raw.priority = raw.priority || 1; raw.mode = raw.mode || "standard";
+        return { ok: true, value: raw as ChangeOrder };
+      }, o);
+      if (co) cos.push(co);
+    }
+    return { cos };
+  };
+}
+
+/* ============ Uthibitisho wa raundi (mkaguzi × CO verdict) ============ */
+
+export function llmVerifyRound(o?: JudgeCallOpts) {
+  return async (inp: {
+    cos: ChangeOrder[]; evidence: EvidencePack; run: MilestonesRunState; milestone: Milestone; round: number; reviewers: string[];
+  }): Promise<Record<string, Record<string, ReviewSignature>>> => {
+    const out: Record<string, Record<string, ReviewSignature>> = {};
+    for (const co of inp.cos) {
+      out[co.id] = {};
+      for (const rv of inp.reviewers) {
+        const system = [
+          `Wewe ni mkaguzi ${rv}. Mwangaza ya mushahara raundi ${inp.round}/10. Evalue CO: imetekelezwa kikamilifu? JIBU: JSON pekee { "verdict": "PASS"|"FAIL"|"PARTIAL", "note": "…" }`,
+        ].join("\n");
+        const user = [
+          `CO: ${JSON.stringify({ id: co.id, current: co.current, desired: co.desired, visionNote: co.visionNote, acceptance: co.acceptance })}`,
+          "",
+          "USHAHIDI mpya (baada ya marekebisho):",
+          evidenceDigest(inp.evidence),
+        ].join("\n");
+        const res = await llmJson<{ verdict: "PASS" | "FAIL" | "PARTIAL"; note?: string }>(`${inp.milestone.id}.R${inp.round}.${rv}.verify.${co.id}`, rv, system, user, (x) => {
+          const v = String((x as any)?.verdict || "").toUpperCase();
+          if (!["PASS", "FAIL", "PARTIAL"].includes(v)) return { ok: false, errors: ["verdict inahitajika (PASS/FAIL/PARTIAL)"] };
+          return { ok: true, value: { verdict: v as any, note: String((x as any)?.note || "") } };
+        }, { ...o, effort: "high" });
+        out[co.id][rv] = res ? { reviewer: rv, verdict: res.verdict, note: res.note } : { reviewer: rv, verdict: "FAIL", note: "uthibitisho ulishindwa kupata majibu" };
+      }
+    }
+    return out;
+  };
+}
+
+/* ============ Ngazi 2: rewriteConcrete, Ngazi 3: pairPatch, Ngazi 5+: redecide ============ */
+
+export function llmRewriteConcrete(o?: JudgeCallOpts) {
+  return async (co: ChangeOrder, diagnosis: string): Promise<ChangeOrder> => {
+    const system = [
+      "Wewe ni Optimus. Jaribio la CO limekosea. Tenga CO mpya ya UHAKIKA zaidi: faili MAELEZO kamili, selector, mali (property), thamani kamili, kabla/baada, kipimo wazi.",
+      `Utambuzi wa chanzo: ${diagnosis}. JIBU: JSON ya CO (mode: 'concrete', diagnosis).`,
+    ].join("\n");
+    const user = `CO iliyoshindwa: ${JSON.stringify(co)}`;
+    const out = await llmJson<ChangeOrder>(`${co.id}.R.concrete`, "pm", system, user, (x) => {
+      const raw = x as any;
+      raw.id = `${co.id}b`; raw.attempt = (co.attempt || 1) + 1; raw.mode = "concrete"; raw.diagnosis = (diagnosis as ChangeOrder["diagnosis"]) || "ATTEMPTED_WRONG";
+      return { ok: true, value: raw as ChangeOrder };
+    }, { ...o, effort: "high" });
+    return out || { ...co, id: `${co.id}b`, attempt: (co.attempt || 1) + 1, mode: "concrete", diagnosis: (diagnosis as ChangeOrder["diagnosis"]) || "ATTEMPTED_WRONG" };
+  };
+}
+
+export function llmPairPatch(o?: JudgeCallOpts) {
+  return async (co: ChangeOrder): Promise<string | null> => {
+    const system = [
+      "Wewe ni Vextron (Frontend Engineer). Andika PATCH KAMILI (unified diff au code kamili) inayotekeleza CO bila makosa.",
+      "JIBU: code/diff pekee ndani ya ``` fences.",
+    ].join("\n");
+    const r = await judgeText(`${co.id}.R.patch`, "frontend", system, `CO: ${JSON.stringify(co)}`, { ...o, effort: "high", maxTokens: 6000 });
+    if (!r) return null;
+    const m = r.match(/```(?:diff|typescript|tsx|javascript|js|jsx|css|json|html)?\s*([\s\S]*?)```/);
+    return (m ? m[1] : r).trim() || null;
+  };
+}
+
+export function llmRedecide(o?: JudgeCallOpts) {
+  return async (co: ChangeOrder): Promise<{ action: "KEEP" | "MODIFY" | "WAIVE"; reason: string; modified?: ChangeOrder; approvedBy: string[] }> => {
+    const system = [
+      "Wewe ni mwenyekiti wa wawakilishi watatu — wakaguzi wawili na Optimus. Kosa limekata mara 5+. CHAGUA moja:",
+      "KEEP (jaribu tena), MODIFY (badilisha sharti — uamuzi mpya), WAIVE (kubali mkengeuko; ni nadra na LAZIMA iandikwe sababu).",
+      'JIBU: JSON { "action": "KEEP|MODIFY|WAIVE", "reason": "…" }',
+      "Haki: WAIVE kamwe si kimya — iwe na sababu ya kikristal.",
+    ].join("\n");
+    const out = await llmJson<{ action: "KEEP" | "MODIFY" | "WAIVE"; reason: string }>(`${co.id}.R.redecide`, "pm", system, `CO: ${JSON.stringify(co)}`, (x) => {
+      const a = String((x as any)?.action || "").toUpperCase();
+      if (!["KEEP", "MODIFY", "WAIVE"].includes(a)) return { ok: false, errors: ["action inahitajika"] };
+      return { ok: true, value: { action: a as any, reason: String((x as any)?.reason || "") } };
+    }, { ...o, effort: "high" });
+    const res = out || { action: "KEEP" as const, reason: "(default — LLM haikupatikana)" };
+    return { ...res, approvedBy: ["designer", "frontend", "pm"] };
+  };
+}

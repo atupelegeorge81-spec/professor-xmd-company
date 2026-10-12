@@ -57,6 +57,9 @@ export interface AcquireSpec {
   /** tuma include_reasoning kwa lanes zinazoitambua (streams za thinking) */
   reasoning?: boolean;
   allow?: ProviderId[];
+  /** P8 (maelezo.md 10.2): kichujio cha ziada cha lanes (mf. judge inataka tier=flash pekee).
+   *  Kisichotajwa: madarasa mengine hayabadiliki kabisa. */
+  laneFilter?: (l: Lane) => boolean;
   /** R49 · MPANGO KAZI: lanes za policy.PLAN_PROVIDERS PEKEE (XKiro qwen akaunti 1·2 → UnoRouter/OpenRouter
    *  = nemotron-3-ultra-550b · space-bunny-alpha). Gemini/Groq HAZIRUHUSIWI kabisa kwenye mpango (agizo la Mkuu). */
   planWork?: boolean;
@@ -119,12 +122,12 @@ function clientFor(lane: Lane, key: string): OpenAI {
 
 type Pick = { lane: Lane; maxTokens: number } | { waitUntil: number } | { exhausted: number | null };
 
-function pick(cls: WorkClass, estIn: number, maxOut: number, agentId: string, excluded: Set<string>, deadline: number, allow?: ProviderId[], now = Date.now(), critical = false, fast = false, planWork = false): Pick {
+function pick(cls: WorkClass, estIn: number, maxOut: number, agentId: string, excluded: Set<string>, deadline: number, allow?: ProviderId[], now = Date.now(), critical = false, fast = false, planWork = false, specLaneFilter?: (l: Lane) => boolean): Pick {
   const S = bstate();
   const sticky = S.sticky.get(agentId);
   const stickyId = sticky && now - sticky.at < 10 * 60_000 ? sticky.laneId : undefined;
   // R49: planWork = Mpango Kazi — providers zilizoruhusiwa PEKEE (Gemini/Groq zinaondolewa kabla ya score yoyote).
-  const lanes = allLanes().filter((l) => !excluded.has(l.id) && (!planWork || PLAN_PROVIDERS.includes(l.provider)) && laneWeight(cls, l, fast, planWork) > 0 && (!allow || allow.includes(l.provider)));
+  const lanes = allLanes().filter((l) => !excluded.has(l.id) && (!planWork || PLAN_PROVIDERS.includes(l.provider)) && laneWeight(cls, l, fast, planWork) > 0 && (!allow || allow.includes(l.provider)) && (!specLaneFilter || specLaneFilter(l)));
   let best: { lane: Lane; maxTokens: number; s: number; w: number } | null = null;
   const upcoming: { at: number; w: number }[] = [];
   for (const lane of lanes) {
@@ -188,7 +191,7 @@ export function brokerRun(spec: AcquireSpec): Run {
       for (;;) {
         if (spec.signal?.aborted) throw abortError();
         const now = Date.now();
-        const p = pick(cls, estIn, spec.maxOut, spec.agentId, excluded, deadline, spec.allow, now, !!spec.critical, !!spec.fast, !!spec.planWork);
+        const p = pick(cls, estIn, spec.maxOut, spec.agentId, excluded, deadline, spec.allow, now, !!spec.critical, !!spec.fast, !!spec.planWork, spec.laneFilter);
         if ("lane" in p) {
           if (waited) spec.onWait?.(null);
           return dispatch(p.lane, p.maxTokens);
@@ -203,7 +206,7 @@ export function brokerRun(spec: AcquireSpec): Run {
         if (PRIO_DELAY[prio] && Date.now() < p.waitUntil) await new Promise((r) => setTimeout(r, PRIO_DELAY[prio]));
         if (Date.now() >= deadline + PRIO_DELAY[prio]) {
           // dirisha limeisha: jaribio la mwisho bila kusubiri
-          const last = pick(cls, estIn, spec.maxOut, spec.agentId, excluded, 0, spec.allow, Date.now(), !!spec.critical, !!spec.fast, !!spec.planWork);
+          const last = pick(cls, estIn, spec.maxOut, spec.agentId, excluded, 0, spec.allow, Date.now(), !!spec.critical, !!spec.fast, !!spec.planWork, spec.laneFilter);
           if ("lane" in last) { spec.onWait?.(null); return dispatch(last.lane, last.maxTokens); }
           throw new BrokerExhaustedError("waitUntil" in last ? last.waitUntil : "exhausted" in last ? last.exhausted : null, cls);
         }

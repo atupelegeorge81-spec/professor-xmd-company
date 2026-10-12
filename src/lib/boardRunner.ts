@@ -12,6 +12,12 @@ import { curateSources, onOwnerTurn, onObserverNote, reviewFacts, onReviewVerdic
 import { saveReport, saveSession, updateSessionItems, getConversation, lastSaveError, type SessionItem } from "./reports";
 import { saveLedgerEntry, finalBoardResolution, markSuperseded, type LedgerObjection } from "./ledger";
 import { generateAgenda, type AgendaItem } from "./agenda";
+// MILESTONES (maelezo.md): host ya Hatua A–C + state chip — run() inaitumia kupitia functions hizi
+import { ensureMilestonesMap, milestonesEnabledFor, rosterForAgenda } from "./milestone/host";
+import { ocbForAgendaDiscussion } from "./milestone/ocb";
+import { runMilestonesHost } from "./milestone/hostRun";
+import { milestoneDepsFor } from "./milestone/depsAdapter";
+import { readMilestonesState as readMsState } from "./milestone/state";
 import type { BoardEvent } from "./types";
 import { readUsage, createLiveMeter, type ExactUsage } from "./tokenMeter";
 import { writeMiniReport as writeMiniReportCore, provisionalMini, miniDecisionSection, miniContext, needsMiniRedo, miniTries, cleanDecision, type MiniReport, type MiniInput } from "./miniReport";
@@ -87,6 +93,8 @@ export interface Runner {
   computerPlanned?: boolean;
   /** R31: hali ya run ya computer-use (in-memory; chip ya CU_STATE inadumu Appwrite) */
   cu?: CuRunState;
+  /** P2/P3 (maelezo.md): hali ya milestones (in-memory ya session + chip ya MS_PREFIX — inadumu) */
+  milestones?: import("./milestone/types").MilestonesRunState | null;
   /** R31: hooks za ndani za run() — endpoint ya cu-event zinazitumia (route haina access ya closure) */
   cuHooks?: CuHooks;
 }
@@ -1099,8 +1107,12 @@ async function run(runner: Runner) {
       // 6ac3b624/6ac3c713: LLM/Appwrite hiccup kwenye validator/reports za re-run iliuua
       // resume ingawa CU ina snapshot yake ya workspace + chip yake ya hali).
       // (Kosa la 6ac3ce60: rebuilt runner hana `cu` bado — ensureCuState hapa, si baadaye)
-      if (runner.computerPlanned && !runner.finale?.computer) ensureCuState(runner);
-      if (runner.cu?.pausedOnce && !runner.cu?.done && runner.computerPlanned && cuEnabled()) {
+      // MILESTONES: soma ramani MAPEMA — run ya milestones mode HAIingii njia hii ya CU ya zamani
+      // (pipeline ina ratio zake za CU per milestone/round; resume inaendelea kupitia host chini).
+      let msEarly: import("./milestone/types").MilestonesRunState | null = null;
+      try { msEarly = readMsState(runner.items as unknown[]); } catch { msEarly = null; }
+      if (!msEarly && runner.computerPlanned && !runner.finale?.computer) ensureCuState(runner);
+      if (!msEarly && runner.cu?.pausedOnce && !runner.cu?.done && runner.computerPlanned && cuEnabled()) {
         blog("system", "♻️ Quota ilirudi — XMD Computer inaendelea moja kwa moja (snapshot inarejesha workspace).");
         addChip("▶️ Quota ilirudi — XMD Computer inaendelea moja kwa moja kutoka pale ilipoishia.");
         void persist("running"); // doc ionekane YA SASA (si kwa tukio la kwanza la CU)
@@ -1160,6 +1172,31 @@ async function run(runner: Runner) {
       addChip(`📋 Agenda (${agenda.length} vipengele): ${agenda.map((a) => a.item).join(" · ")}`);
       await persist("agenda_created", conversationTitle);
     }
+
+    // ===== MILESTONES · Hatua A–C (maelezo.md 4.1–4.2 / 10.1) =====
+    // Ramani ya milestones iwekwe/pulizwe KWA CODE — LLM (Flash) inapendekeza, validator inaamua,
+    // dharura = umegawanyiko wa wastani. Haitagusa plan mode wala env XMD_MILESTINES=off.
+    let msRun: import("./milestone/types").MilestonesRunState | null = null;
+    try { msRun = readMsState(runner.items as unknown[]); } catch { msRun = null; }
+    if (milestonesEnabledFor(!!runner.computerPlanned) && agenda.length && !msRun) {
+      try {
+        const got = await ensureMilestonesMap({
+          sessionId: sessionId || runner.id, project: runner.project,
+          brief: runner.items.find((x) => x.kind === "chip" && typeof x.text === "string" && x.text.startsWith("__PROFESSOR_XMD_BRIEF__:"))?.text?.slice("__PROFESSOR_XMD_BRIEF__:".length),
+          agenda: agenda.map((a) => ({ index: a.index, item: a.item })),
+          items: runner.items as unknown[],
+          computerPlanned: !!runner.computerPlanned,
+        }, { bcast, blog, addChip, persist });
+        if (got.run) { msRun = got.run; if (got.fresh) await persist("milestones_created", conversationTitle); }
+      } catch (e: any) {
+        blog("warning", `🗺️ Ramani ya milestones imeshindwa (${String(e?.message || e).slice(0, 120)}) — run inaendelea bila milestones (dharura ya mahitaji).`);
+      }
+    } else if (msRun) {
+      // resume: events tayari zimetolewa na replay (savedToEvents) — hii ni msingi wa hatua za P3+
+      blog("info", `🗺️ Milestones: tayari kuna ramani (${msRun.map.milestones.length}) — hali inaendelea kutoka chip.`);
+    }
+    // (msRun hutumika P3+: roster ya agenda, trigger ya milestone ya mwisho, orchestration)
+    runner.milestones = msRun;
 
     // ===== R26 · AWAMU 1: FACT SHEET — data rasmi ya brief inafungwa KWA CODE (chanzo kimoja cha ukweli) =====
     if (runner.facts === undefined || (runner.facts === null && !isResume)) {
@@ -1465,7 +1502,17 @@ async function run(runner: Runner) {
       await gate(`Agenda ${item.index}`);
 
       bcast({ type: "round", round: item.index, total: agenda.length });
-      const ownerAgents = item.owners.map((o) => getAgent(o)!).filter(Boolean);
+      const ownerAgentsAll = item.owners.map((o) => getAgent(o)!).filter(Boolean);
+      // 4.3 ROSTER-GATE (milestones mode): wanaojadili ni roster ya milestone hii ∩ owners;
+      // mahala hakuna mpishano → pm-fallback na sasisho la map (code ndiyo mwamuzi wa hatua inayofuata).
+      const msRosterIds = msRun ? rosterForAgenda(msRun, item.index) : null;
+      let ownerAgents = ownerAgentsAll;
+      if (msRun && msRosterIds && !msRosterIds.every((r) => item.owners.includes(r))) {
+        const inter = ownerAgentsAll.filter((a) => msRosterIds.includes(a.id));
+        ownerAgents = inter.length ? inter : [pm];
+        const msOfItem = msRun.map.milestones.find((x) => item.index >= x.agendas.from && item.index <= x.agendas.to);
+        blog("info", `👥 Roster ya ${msOfItem ? msOfItem.id : "milestone"}: ${ownerAgents.map((a) => a.name).join(", ")} wanaongoza agenda ${item.index} (wengine ni observers).`);
+      }
       const ownerNames = ownerAgents.map((a) => a.name).join(" + ");
       addChip(` Agenda ${item.index}/${agenda.length}: ${item.item} — owners: ${ownerNames}`);
       blog("system", `🎯 Agenda ${item.index}: ${item.item} | owners: ${ownerNames}`);
@@ -1694,8 +1741,11 @@ ${runner.project}`;
 
           const hasProposal = Boolean(proposed);
 
-          const prompt = `
-PROJECT: "${runner.project}"
+          // §6 OCB — code-built kutoka hali halisi (ramani/hatua/roster/KINACHOFUATA); haitumiki LLM.
+          const ocbBlock = msRun
+            ? ocbForAgendaDiscussion({ run: msRun, project: runner.project, team: AGENTS, agendaIndex: item.index, agendaTotal: agenda.length, roleId: agent.id })
+            : "";
+          const prompt = `${ocbBlock ? `${ocbBlock}\n\n` : ""}PROJECT: "${runner.project}"
 
 LOCKED LEDGER:
 ${ledger}
@@ -3721,12 +3771,46 @@ KWENYE SEHEMU YA 4 (Maamuzi): taja KILA agenda ya Ledger (1 hadi ${agenda.length
       }
       if (memoryOk) runner.finale = { ...(runner.finale || {}), memory: true };
     }
+    // ===== MILESTONES HOST (4.4–4.9) — inachukua nafasi ya awamu ya kuu ya CU za zamani =====
+    // Idempotent: msRun chip inabaki → Endeleza/resume inaendelea kiwango cha milestoniele (orchestrate).
+    if (msRun && runner.computerPlanned && !runner.finale?.milestonesDone) {
+      const msSlices = milestoneDepsFor({ runner: runner as any, cuHooks: { persist, bcast, blog, addChip, recordUsage, usage, byProvider, title: conversationTitle } as CuHooks });
+      if (msSlices.ready) {
+        blog("system", "🗺️ Awamu ya MILESTONES inaanza — Optimus anaandika Mpango wa milestone → Computer anajenga → ukaguzi → sign-off (inastahili yenyewe).");
+        addChip("🗺️ Awamu ya milestones inaanza — kwa kila milestone: Mpango → Computer → Ushahidi → Ukaguzi → Sign-off. Hakuna kitufe; inaendelea yenyewe.");
+        try {
+          const host = await runMilestonesHost({
+            runner: { id: runner.id, sessionId: sessionId || runner.id, project: runner.project, items: runner.items as unknown[] },
+            run: msRun,
+            project: runner.project,
+            facts,
+            hooks: { blog, addChip, bcast: (evt) => bcast(evt as any), persist },
+            callLLM: async (agentId, messages, maxTokens) => auxChatWithRotation(agentId, messages, maxTokens, { cls: "heavy", purpose: "milestone-plan" }),
+            deps: msSlices.deps,
+          });
+          if (host.done) {
+            runner.finale = { ...(runner.finale || {}), milestonesDone: true, computer: true };
+            blog("success", `🏁 Milestones zimefungwa (${host.signedOff.length} za kukubaliwa, ${host.incomplete.length} zisizokamilika).`);
+          } else {
+            blog("warning", `⚠️ Milestones hazijakamilika: ${host.incomplete.join(", ")} — Endeleza itaichukua tena.`);
+          }
+          await persist(host.done ? "milestones_done" : "finale_incomplete", conversationTitle);
+        } catch (e: any) {
+          blog("error", `❌ Milestones host imeshindwa: ${String(e?.message || e).slice(0, 160)}`);
+        }
+      } else {
+        // P4 halijawekwa — hii ni sehemu ya wiring TU; tutatisikilizeya kesi hii (stability: chip ya kueleza).
+        addChip(`🗺️ Ramani ya milestones imewekwa (${msRun.map.milestones.length}) — ${msSlices.reason}.`);
+        blog("info", `🗺️ Milestones mode: ${msSlices.reason}.`);
+      }
+    }
+
     let stillMissing = missingParts({ status: "finale", items: runner.items as FinaleItem[], agendaTotal: agenda.length, done: agenda.map((a) => a.index), finale: runner.finale, mode: runner.mode, computerPlanned: runner.computerPlanned });
     // ===== R31 · XMD COMPUTER — awamu ya MWISHO (baada ya card ya MWISHO kabisa ya Board: memory imekamilika).
     // Inaanza YENYEWE — hakuna kitufe (uamuzi #1 wa CEO). Agent MMOJA "XMD Computer" (hana jina) anatekeleza
     // Mpango Kazi kwenye sandbox ya E2B: jenga → jipime (Playwright) → GitHub → Vercel → ripoti ya Kiswahili.
     const cuOnlyMissing = stillMissing.length === 1 && stillMissing[0] === "Utekelezaji wa XMD Computer";
-    if (cuOnlyMissing && planModeRun && runner.finale?.planId && runner.computerPlanned && cuEnabled()) {
+    if (!msRun && cuOnlyMissing && planModeRun && runner.finale?.planId && runner.computerPlanned && cuEnabled()) {
       runner.cuHooks = { persist, bcast, blog, addChip, recordUsage, usage, byProvider, title: conversationTitle };
       blog("system", "🖥️ Awamu ya XMD COMPUTER inaanza — Mpango Kazi unatekelezwa na agent (E2B sandbox).");
       addChip("🖥️ Awamu ya XMD Computer inaanza — agent anatekeleza Mpango Kazi (E2B sandbox). Hakuna kitufe; inaendelea yenyewe.");

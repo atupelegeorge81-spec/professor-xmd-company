@@ -187,6 +187,8 @@ export interface FinaleState {
   planId?: string | null;
   /** R31: awamu ya XMD Computer imekamilika (ripoti ya agent imeingia) */
   computer?: boolean;
+  /** MILESTONES (maelezo 4.4–4.9): host ya milestones ilefunga zote — idempotence guard ya trigger */
+  milestonesDone?: boolean;
 }
 
 /**

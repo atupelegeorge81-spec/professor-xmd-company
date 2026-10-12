@@ -927,6 +927,14 @@ export function createBoardAdapter(opts: { instant?: boolean; now?: () => number
         break;
       }
       case "round": stageSet({ total: e.total }); break;
+      case "milestone": {
+        // P2: strip ndogo ya milestones — dedupe kwa id, mpangilio uwe ni wa ramani (ingizio)
+        const list = [...(stage.milestones || [])];
+        const i = list.findIndex((x) => x.id === e.milestone.id);
+        if (i >= 0) list[i] = e.milestone; else list.push(e.milestone);
+        stageSet({ milestones: list });
+        break;
+      }
       case "activity": {
         if (e.state === "start") {
           const text = e.text || "";
@@ -1482,6 +1490,7 @@ export interface SavedItem {
 }
 
 const HIDDEN = /^__PROFESSOR_XMD_(RESUME_STATE|USAGE|BRIEF|FACTS|CU_STATE)__:/; // R26: brief + facts · R31: hali ya XMD Computer
+const MS_PREFIX_UI = "__professor_xmd_milestones__v1__"; // P2: chip ya milestones — haiorodheshwi kama system (inageuka matukio ya strip)
 
 /** Hugeuza items zilizohifadhiwa (Appwrite) kuwa mfululizo wa matukio kwa adapter. */
 export function savedToEvents(items: SavedItem[], project: string): AdapterEvent[] {
@@ -1498,6 +1507,17 @@ export function savedToEvents(items: SavedItem[], project: string): AdapterEvent
       continue;
     }
     if (it.kind === "title" && it.text) out.push({ type: "title_done", title: it.text });
+    else if (it.kind === "chip" && typeof it.text === "string" && it.text.startsWith(MS_PREFIX_UI)) {
+      // P2 (maelezo.md): chip ya milestones → matukio ya strip ndogo (status za kila milestone)
+      try {
+        const run = JSON.parse(String(it.text).slice(MS_PREFIX_UI.length));
+        const states = run?.states || {};
+        for (const m of run?.map?.milestones || []) {
+          const s = states[m.id] || {};
+          out.push({ type: "milestone", milestone: { id: m.id, title: String(m.title || m.id), status: String(s.status || "DISCUSSING"), round: Number(s.round) || 0, maxRounds: Number(s.maxRounds) || 10, mode: m.reviewMode, active: run.currentMilestoneId === m.id } } as AdapterEvent);
+        }
+      } catch { /* chip chafu — ruka kimya */ }
+    }
     else if (it.kind === "chip" && it.text && !HIDDEN.test(it.text)) out.push({ type: "system", text: it.text });
     else if (it.kind === "round") out.push({ type: "round", round: it.round || 0, total: it.total || 0 });
     else if (it.kind === "msg") {

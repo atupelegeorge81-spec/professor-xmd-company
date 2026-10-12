@@ -328,6 +328,17 @@ export type StageItem =
 export type AgendaPhase = "evidence" | "discussion" | "code" | "lock" | "review" | "relock" | "memory";
 export type FinalePhase = "validate" | "assemble" | "plan" | "report" | "reflect" | "done";
 
+/** M…(maelezo.md, onyesho dogo): hali ya kila milestone kwa StageRail — inatengenezwa na code */
+export interface MilestoneLite {
+  id: string;
+  title: string;
+  status: string; // MilestoneStatus string
+  round: number;
+  maxRounds: number;
+  mode: "visual" | "technical" | "mixed";
+  active: boolean;
+}
+
 export interface LiveStage {
   scope: "opening" | "agenda" | "finale" | "done";
   agenda?: AgendaDef;
@@ -343,4 +354,6 @@ export interface LiveStage {
   version: number;
   ledger: Record<number, { status: "LOCKED" | "OPEN" | "SUPERSEDED+LOCKED"; version: number }>;
   background: string | null; // shimmer text ya kazi ya background inayoendelea
+  /** P2 (maelezo.md 14.P2): strip ndogo ya milestones — tukio `milestone` linasasisha */
+  milestones?: MilestoneLite[];
 }
