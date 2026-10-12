@@ -334,7 +334,7 @@ async function readCuFile(name: string): Promise<string> {
   return readFile(join(process.cwd(), "cu", name), "utf8");
 }
 
-async function getSandbox(cu: CuRunState): Promise<any> {
+async function getSandbox(runner: any, cu: CuRunState): Promise<any> {
   // R44-C (kosa la KilimoSmart): sandbox ya mkononi PING kwanza — maiti isirudishwe
   // (resume ilirudisha cu.sandbox iliyo kufa → "not found" kila mara, create haikufika).
   if (cu.sandbox) {
@@ -349,10 +349,12 @@ async function getSandbox(cu: CuRunState): Promise<any> {
     try {
       const sbx = await Promise.race([
         Sandbox.connect(cu.sandboxId, { apiKey }),
+
         new Promise<never>((_, rej) => setTimeout(() => rej(new Error("E2B connect timeout (25s)")), 25_000).unref?.()),
       ]);
       await sbx.setTimeout(55 * 60_000).catch(() => {}); // R44: resume inarejesha clock — panua dirisha
       cu.sandbox = sbx;
+      runner.__sbx = sbx;
       return sbx;
     } catch { /* imikufa / imehangia → mpya */ }
   }
@@ -366,6 +368,7 @@ async function getSandbox(cu: CuRunState): Promise<any> {
     (sbx as any).__xmdFresh = true; // R44-B: iliyoundwa sasa — node_modules hazipo, deps za install
     cu.sandbox = sbx;
     cu.sandboxId = sbx.sandboxId;
+    runner.__sbx = sbx;
     return sbx;
   } catch (e: any) {
     if (!/lifecycle|onTimeout/i.test(String(e?.message || e))) throw e;
@@ -376,6 +379,7 @@ async function getSandbox(cu: CuRunState): Promise<any> {
     (sbx as any).__xmdFresh = true; // R44-B: fallback create — mpya vilevile
     cu.sandbox = sbx;
     cu.sandboxId = sbx.sandboxId;
+    runner.__sbx = sbx;
     return sbx;
   }
 }
@@ -520,7 +524,7 @@ export async function startComputerPhase(runner: Runner, hooks: CuHooks, opts?: 
   }
 
   try {
-    const sbx = await getSandbox(cu);
+    const sbx = await getSandbox(runner, cu);
     try { await sbx.setTimeout(60 * 60 * 1000); } catch { /* */ }
 
     // ♻️ RESUME: (1) replay ya events zilizokosekana kutoka events.jsonl (Koyeb ilipotea)

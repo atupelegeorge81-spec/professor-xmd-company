@@ -90,3 +90,21 @@ $ vitest run (full)
 $ tsc --noEmit -p tsconfig.json → CLEAN (0 errors)
 ```
 **Bugs zilizorekebishwa wakati wa P3 (real):** typo `obcC↔ocbC`; hesabu ya attempts iliokatanishwa (`pendingCosFor`=attempt+1, `inFlightCosFor`=IN_FIX+attempt) — inawezesha kupungua CO mpya kwa raundi mpya ipasavyo; escalations hazisisimami kabla ya kuzalisha CO inayofuata; receipts-verification haiongezi history part bila sababu.
+
+## P4+P5 — Harness wiring halisi + Q-003 UI card + marekebisho ya broker (2026-10-12, turn hii)
+
+**Kigezo cha kukubalika:**
+1. `harness.test.ts` = **25/25** (12 aina za check PASS+FAIL: command/grep/dom_exists/computed_style/no_horizontal_overflow/console_clean/contrast_min/touch_target_min/http/file_exists/file_contains/screenshot_taken; overflow@375 (scrollWidth 1200), contrast chini-4.5, pixel-diff 0/1/100% + size-change, PNG decode halisi).
+2. Engine inaweka `runner.__sbx` kwenye node zote 3 za sandbox (create mpya ×2 paths + connect/resume) — depsAdapter inaweza kufikia sandbox handle ya CU.
+3. `depsAdapter.ts`: `evidenceScriptSrc` unasomwa HALISI kwa `readFileSync(harness/evidence.py)` (server-side) — sio placeholder tena.
+4. `collect.ts`: regression inahesabwa HALISI dhidi ya baselines — `pngMapOf()` inasoma baseline PNGs kutoka R0 `baselines/` (sbx au local), current shots zinasomwa pia, `regressionAgainst(currentPngs, baselinePngs, threshold)` inaheshya pixel-diff; threshold inabadilishwa kwa `MS_REGRESSION_PCT_THRESHOLD` (default 2%).
+5. UI (uamuzi wa mwenye 2026-10-12): milestone ionyeshwe kama **card kamili kama agenda** — `MsStartMark` + `MsChipMark` (Opening.tsx, structure=AgendaStartMark); StageStream switch imeongezwa cases `msStart`/`msChip`; stage types (`MsStartItem`/`MsChipItem`, `MilestoneDef` iliyoboreshwa) + `reports.ts` SessionItem kinds; adapter `case "msStart"` dedupe-by-id; `rehydrate.seedEvents` inatengeneza tena msStart kwenye replay; rail strip (StageRail) inabaki kama nav ya maendeleo.
+6. Marekebisho ya broker: `judge` lane guard (`broker/index.ts`) sasa ikipa `kv.lanes` zilizowekwa na mazingira — hazijengagi synthetic-judge ovyo; kila module inalipa yote ya fail-closed.
+
+**Command output (halisi):**
+```
+$ vitest run src/lib/milestone/harness.test.ts    → 25/25 passed
+$ vitest run (full, CI=1)                         → 335 passed (335), 30 files
+$ tsc --noEmit -p tsconfig.json                   → CLEAN
+```
+**Bugs zilizorekebishwa wakati wa hii (real):** (a) adapter-P3 milestone-suite ilikuwa poisonous kutokana na synthetic judge kuyumba wakati env-era lane inafaa — dilifanya test fail ku-enclave; (b) `collect.ts` regression ilikuwa stub (`regressionAgainst({},{},2)`) — sasa inasoma PNG halisi; (c) engine haikuweka `__sbx` (faili-kama-dep ilikuwa unreachable); fixes 3 sites; zote zimefungwa na tsc+tests ikiisha.

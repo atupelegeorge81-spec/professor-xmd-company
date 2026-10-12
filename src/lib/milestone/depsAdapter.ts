@@ -3,6 +3,8 @@
 //  • collectEvidence → HARNESS YA P4 (hakujawekwa — ready=false hivyo trigger inabaki imezimwa kwa uwazi)
 // Kanuni: tusiipanje ushahidi. P4 inapoweka harness, ready inakuwa true na trigger inaamka.
 import { beginNewCuPhase, startComputerPhase, cuEnabled, type CuHooks } from "../cu/engine";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { collectEvidencePack, evidenceRel, type CollectArgs, type SbxLike } from "./harness/collect";
 import type { OrchestratorDeps, ComputerBuildRequest, ComputerBuildResult, BuildTerminal } from "./orchestrate";
 
@@ -52,7 +54,11 @@ export function milestoneDepsFor(args: DepsAdapterArgs): { deps: Partial<Orchest
     if (!sbx) throw new Error("sandbox handle (__sbx) haipo — engine istacomplete kupanga");
     const wsPath = cu?.workspace || "/home/user/app";
     const baseUrl: string = cu?.links?.live || "http://localhost:3000";
-    const evidenceSrc = (args as any).evidenceScriptSrc as string | undefined; // isipokuwepo, TS itaweka
+    let evidenceSrc = (args as any).evidenceScriptSrc as string | undefined;
+    if (!evidenceSrc) {
+      // Q-004 uamuzi: TS inakimbia kwenye ndege ya backend; evidence.py inakuja kimatini
+      try { evidenceSrc = readFileSync(resolve(process.cwd(), "src/lib/milestone/harness/evidence.py"), "utf8"); } catch { evidenceSrc = undefined; }
+    }
     const pack = await collectEvidencePack({
       sbx, wsPath, baseUrl, milestone, round, run,
       checks: (run.plans[milestone.id]?.checks || []) as any,

@@ -132,6 +132,24 @@ async function makeHarnessIOcurl(sbx: SbxLike, method: string, url: string): Pro
 }
 
 /* ---------- executePython @ sandbox ---------- */
+
+/** pngMap: kiasi cha {key: bytes} kwa kufanana baseline PNG kutoka ata (sbx|local). */
+export async function pngMapOf(args: { sbx: SbxLike | null; wsPath: string; dir: string; keys: string[] }): Promise<Map<string, Uint8Array>> {
+  const out = new Map<string, Uint8Array>();
+  for (const key of args.keys) {
+    const rel = `${args.wsPath}/${args.dir}/${key}`.replace(/\/+/g, "/");
+    try {
+      if (args.sbx) {
+        const b = await args.sbx.files.read(rel);
+        out.set(key, new Uint8Array(b));
+      } else {
+        out.set(key, new Uint8Array(readFileSync(rel)));
+      }
+    } catch { /* hakikini — basa usizuane */ }
+  }
+  return out;
+}
+
 export async function executeEvidencePython(args: CollectArgs): Promise<{ ok: boolean; outDir: string; manifest?: RawManifest; errors: string[] }> {
   const { sbx, wsPath, baseUrl, milestone, round } = args;
   if (!sbx) return { ok: false, outDir: evidenceRel(milestone.id, round), errors: ["sandbox haipo (mock only)"] };
@@ -230,8 +248,42 @@ export async function collectEvidencePack(args: CollectArgs): Promise<EvidencePa
   // Regression vs baselines (ziwekwe tu za screenshot zilizopatikana)
   let regression: RegressionEntry[] = [];
   try {
-    regression = regressionAgainst({}, {}, 2);
-  } catch { /* nzito -> skip */ }
-
-  return manifestToEvidence(milestone, round, man, checks, cmdEntries, gitDiff, regression);
+    if (man.shots.length) {
+      const baseDir = `${evidenceRel(milestone.id, 0)}/baselines`;
+      const keys = man.shots.map((sh) => sh.id); // key = shot id; faili ni `${id}.png` — pngMapOf inaongeza img ext? no: ret as-is; read() needs full path — tunatumia id
+      const map = await pngMapOf({ sbx: args.sbx ?? null, wsPath: args.wsPath, dir: baseDir, keys: keys.map((k) => `${k}.png`) });
+      for (const k of [...map.keys()]) { const v = map.get(k)!; map.delete(k); map.set(k.replace(/\.png$/, ""), v); }
+      if (map.size) {
+        const baselinePngs: Record<string, Uint8Array> = Object.fromEntries(map);
+        const baselineSudoa: Record<string, string> = {}; // DOM cache key→shot id ya baselines (toka R0 manifest)
+        let bman: RawManifest | undefined;
+        try {
+          if (args.sbx) {
+            const bb = await args.sbx.files.read(`${args.wsPath}/${evidenceRel(milestone.id, 0)}/manifest.json`.replace(/\/+/g, "/"));
+            bman = JSON.parse(Buffer.from(bb).toString("utf8"));
+          } else {
+            bman = JSON.parse(readFileSync(join(args.wsPath, evidenceRel(milestone.id, 0), "manifest.json"), "utf8"));
+          }
+        } catch { /* R0 inaweza kupotea — inaruhusiwa */ }
+        if (bman) for (const sh of bman.shots) baselineSudoa[sh.id] = sh.id;
+        if (Object.keys(domCache).length === 0) {
+          // DOM keys za raundi ya sasa zinatumikia; urasa vet kwa map ya baselines tentu
+          for (const sh of man.shots) baselineSudoa[sh.id] = baselineSudoa[sh.id] || sh.id;
+        }
+        const currentPngs: Record<string, Uint8Array> = Object.fromEntries(
+          (await Promise.all(man.shots.map(async (sh): Promise<[string, Uint8Array] | null> => {
+            try {
+              const rel = `${args.wsPath}/${outDir}/${sh.path}`.replace(/\/+/g, "/");
+              let bytes: Uint8Array | null = null;
+              if (args.sbx) bytes = new Uint8Array(await args.sbx.files.read(rel));
+              else bytes = new Uint8Array(readFileSync(rel));
+              return [sh.id, bytes];
+            } catch { return null; }
+          }))).filter((r): r is [string, Uint8Array] => !!r),
+        );
+        regression = regressionAgainst(currentPngs, baselinePngs, Number(process.env.MS_REGRESSION_PCT_THRESHOLD || 2));
+      }
+    }
+  } catch { /* regression — haiuzui pack */ }
+   return manifestToEvidence(milestone, round, man, checks, cmdEntries, gitDiff, regression);
 }
