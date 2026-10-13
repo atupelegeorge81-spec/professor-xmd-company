@@ -35,6 +35,11 @@ export interface HostRunArgs {
   searchFn?: (q: string) => Promise<string>;
   deps?: Partial<OrchestratorDeps>;
   concurrencySignal?: AbortSignal;
+  /** R64 (maelezo 4.4 TRIGGER): ukiwekwa, host inafanya trigger kwa milestones zenye agenda ZAKE ZOTE zimefungwa TU.
+   * Milestone ya kwanza isiyo-terminal yenye agenda haikubazwa-zimefungwa nzima → host inakwamisha (mjadala unaendelea Mk+1 inaanza). */
+  lockedAgendas?: Set<number>;
+  /** R64 (maelezo 4.5 #1): MINI-REPORTS za agenda za milestone — chanzo kikuu cha mpango wa Mk (inaitwa kwa kila milestone). */
+  miniReportsFor?: (milestone: { id: string; agendas: { from: number; to: number } }) => Promise<string[]>;
 }
 
 export interface HostRunResult {
@@ -112,6 +117,8 @@ function recordJudgeLane(run: MilestonesRunState, partial: { stepId: string; tie
         ledgerShort: args.ledgerShort || "(ledger ya Board imefungwa kwenye mjadala)",
         facts: args.facts ?? null,
         inheritedDefects: run.defects.filter((d) => d.status === "INHERITED"),
+        // R64 (4.5): mini-reports za agenda za Mk — chanzo kikuu cha mpango (zinapatikana baada ya agenda zake kufungwa)
+        miniReports: args.miniReportsFor ? await args.miniReportsFor(milestone).catch(() => []) : undefined,
         callLLM: planLLM,
       });
       return { md: plan.md, title: plan.title, checks: plan.checks, blocked: plan.blocked, errors: plan.errors };
@@ -144,11 +151,32 @@ function recordJudgeLane(run: MilestonesRunState, partial: { stepId: string; tie
     redecide: review.llmRedecide({ onLane: (rec) => recordJudgeLane(run, { stepId: `M.Co.redecide`, tier: rec.lane, provider: rec.lane, model: rec.lane, visionCapable: rec.visionCapable, fallback: rec.fallback }), vision: true, waitNote: (m) => hooks.blog("info", m) }),
     ...(args.deps || {}),
   } as OrchestratorDeps;
+  // R64/R63: badge ya </> Computer inatokea UJENZI unapoanza kweli (si wakati Optimus anaandika mpango) — decorate computerBuild.
+  const realBuild = (deps as OrchestratorDeps).computerBuild;
+  if (typeof realBuild === "function") {
+    (deps as OrchestratorDeps).computerBuild = async (req) => {
+      const midB = String(req?.label || "").split(" ")[0] || run.currentMilestoneId || "";
+      if (midB) hooks.bcast({ type: "msStart", milestone: { id: midB, status: "BUILDING", round: Number(req?.round) || 0 } });
+      return realBuild(req);
+    };
+  }
 
   let legacy = 0;
   for (;;) {
     const mid = nextMilestoneToRun(run);
     if (!mid) break;
+    // R64 (4.4 TRIGGER): host iliyotuitwa katikati ya mjadala inafanya trigger tu kwa milestones zenye agenda zimefungwa nzima
+    if (args.lockedAgendas) {
+      const mt = run.map.milestones.find((x) => x.id === mid);
+      if (mt) {
+        let triggered = true;
+        for (let i = mt.agendas.from; i <= mt.agendas.to; i++) if (!args.lockedAgendas.has(i)) { triggered = false; break; }
+        if (!triggered) {
+          hooks.blog("info", `🗺️ ${mid}: bado ina agenda hazikulungwa (${mt.agendas.from}–${mt.agendas.to}) — TRIGGER haijapata; mjadala unaendelea.`);
+          break;
+        }
+      }
+    }
     const st = run.states[mid]?.status;
     if (TERMINAL_OFF(st) || ["BLOCKED", "CAP_REACHED", "HAUJENGWA"].includes(st || "")) continue;
     if (["PAUSED_QUOTA", "PAUSED_INFRA"].includes(st || "")) {
@@ -177,8 +205,6 @@ function recordJudgeLane(run: MilestonesRunState, partial: { stepId: string; tie
       }
     }
     hooks.addChip(` Milestone ${mid} (${run.map.milestones.find((x) => x.id === mid)?.title || mid}) — Optimus anaandika Mpango → Computer anajenga → ukaguzi.`);
-    // R63: Badge ya COMPUTER inatokea sasa — card ya milestone inapata </> Computer mara ujenzi unapoanza
-    hooks.bcast({ type: "msStart", milestone: { id: mid, status: "BUILDING" } });
     try {
       const r = await runMilestonePipeline(args.runner.items, run, deps, mid);
       results.push(r);

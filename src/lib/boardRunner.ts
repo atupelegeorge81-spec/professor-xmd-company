@@ -1228,6 +1228,94 @@ async function run(runner: Runner) {
       bcast({ type: "system", text: msg } as any);
     }
 
+    // ===== R64 (maelezo 4.1–4.10): MILESTONE INTERLEAVE — "kwa kila Mk: mjadala → TRIGGER → Mpango → Computer →
+    // ushahidi → ukaguzi → sign-off → ndipo Mk+1 ianze". Host inaitwa katikati ya mzunguko wa mjadala mara tu agenda
+    // za kufunga Mk zimefungwa (doneIdx). Host ni idempotent: resume/Endeleza inaendelea na hatua iliyosalia.
+    let msSlicesCache: ReturnType<typeof milestoneDepsFor> | null = null;
+    let msDepsWarned = false;
+    const msSlicesFor = () => (msSlicesCache ??= milestoneDepsFor({
+      runner: runner as any,
+      cuHooks: { persist, bcast, blog, addChip, recordUsage, usage, byProvider, title: conversationTitle } as CuHooks,
+    }));
+    const msSearchFn = async (q: string) => {
+      try {
+        const rs = await searchWeb(q).catch(() => searchWebDirect(q));
+        const lines = (rs || []).slice(0, 8).map((r) => `- ${r.title}: ${(r.content || "").slice(0, 300)} (${r.url})`);
+        return lines.join("\n") || "(utafutaji hakuna matokeo)";
+      } catch { return "(utafutaji haujafanikiwa — jila kwa ushahidi uliotolewa)"; }
+    };
+    // R64 (4.5 #1): MINI-REPORTS za agenda za milestone — chanzo kikuu cha mpango wa Mk (mara tu agenda zake zimefungwa ziko bizinafasi)
+    const msMiniReportsFor = async (m: { agendas: { from: number; to: number } }): Promise<string[]> => {
+      try {
+        const entries = ((await finalBoardResolution(runner.id)) || []).filter((x) => x.agenda_index >= m.agendas.from && x.agenda_index <= m.agendas.to);
+        const out: string[] = [];
+        for (const e of entries) {
+          const full = (await miniDetailOf(e)) || String(e.decision_summary || "");
+          if (full.trim()) out.push(`[A${e.agenda_index}] ${e.agenda_item || ""}\n${full}`.trim().slice(0, 2600));
+        }
+        return out;
+      } catch { return []; }
+    };
+    // R64 (4.5 #2 + 4.6): LEDGER short katika plan + StartPack — mwamuzi namwonekana Optimus/Computer (si placeholder tena)
+    const msLedgerShort = async (): Promise<string> => {
+      try {
+        const entries = ((await finalBoardResolution(runner.id)) || []).slice(0, 60);
+        if (!entries.length) return "(bado hakuna decision iliyofungwa)";
+        return entries
+          .map((e) => `A${e.agenda_index} [${e.status}] ${e.agenda_item}: ${String(e.decision_summary || "").replace(/\s+/g, " ").slice(0, 260)}`)
+          .join("\n").slice(0, 9000);
+      } catch { return ""; }
+    };
+    const runPendingMilestones = async (): Promise<void> => {
+      if (!msRun || !runner.computerPlanned || runner.finale?.milestonesDone) return;
+      if (!milestonesEnabledFor(!!runner.computerPlanned)) return;
+      const msr: import("./milestone/types").MilestonesRunState = msRun;
+      const lockedSet = new Set<number>([...(runner.doneIdx || [])]);
+      // TRIGGER (4.4): je — kuna milestone isiyo-terminal yenye agenda ZAKE ZOTE zimefungwa (locked)?
+      const pending = msr.map.milestones.some((m) => {
+        const s = msr.states?.[m.id]?.status;
+        if (["SIGNED_OFF", "SIGNED_OFF_WITH_WAIVERS", "BLOCKED", "CAP_REACHED", "HAUJENGWA", "PAUSED_QUOTA", "PAUSED_INFRA"].includes(s || "")) return false;
+        for (let i = m.agendas.from; i <= m.agendas.to; i++) if (!lockedSet.has(i)) return false;
+        return true;
+      });
+      if (!pending) return;
+      const sl = msSlicesFor();
+      if (!sl.ready) {
+        if (!msDepsWarned) {
+          msDepsWarned = true;
+          blog("warning", `🗺️ TRIGGER imekwama: CU deps haziko tayari (${sl.reason || "engine haiko tayari"}) — host ya mwisho itashughulizia.`);
+        }
+        return;
+      }
+      blog("system", "🗺️ TRIGGER ya milestone: agenda zake zimefungwa (4.4) — Optimus anaandika Mpango → Computer anajenga → ukaguzi → sign-off, kisha mjadala unaendelea.");
+      try {
+        const host = await runMilestonesHost({
+          runner: { id: runner.id, sessionId: sessionId || runner.id, project: runner.project, items: runner.items as unknown[] },
+          run: msr,
+          project: runner.project,
+          facts,
+          hooks: { blog, addChip, bcast: (evt) => bcast(evt as any), persist },
+          callLLM: async (agentId, messages, maxTokens) => auxChatWithRotation(agentId, messages, maxTokens, { cls: "heavy", purpose: "milestone-plan" }),
+          deps: sl.deps,
+          agendaCount: agenda.length,
+          // R64: trigger gate — mk iko tayari NdANI ya host inathibitishwa kupitia lockedAgendas
+          lockedAgendas: lockedSet,
+          // 4.5 #1: mpango wa Mk una mini-reports za agenda zake (chanzo kikuu — polepole kwa pmClient heavy)
+          miniReportsFor: msMiniReportsFor,
+          // 4.5 #2: ledger (mwamuzi) haikosekani kweta mpango wa milestone
+          ledgerShort: await msLedgerShort(),
+          searchFn: msSearchFn,
+        });
+        if (host.done) {
+          runner.finale = { ...(runner.finale || {}), milestonesDone: true, computer: true };
+          blog("success", `🏁 Milestones zimefungwa (${host.signedOff.length} za kukubaliwa, ${host.incomplete.length} zisizokamilika).`);
+          await persist("milestones_done_early", conversationTitle).catch(() => {});
+        }
+      } catch (e: any) {
+        blog("warning", `⚠️ Milestone host (katikati ya mjadala) imeshindwa: ${String(e?.message || e).slice(0, 140)} — mjadala unaendelea; host ya mwisho itashughuliza.`);
+      }
+    };
+
     // ===== R26 · AWAMU 1: FACT SHEET — data rasmi ya brief inafungwa KWA CODE (chanzo kimoja cha ukweli) =====
     if (runner.facts === undefined || (runner.facts === null && !isResume)) {
       runner.facts = extractFactSheet(runner.project);
@@ -1529,6 +1617,9 @@ async function run(runner: Runner) {
         blog("info", `♻️ Kipengele ${item.index}/${agenda.length} tayari kimeshughulikiwa — kinarukwa.`);
         continue;
       }
+      // R64 (maelezo 4.4→4.10): kabla ya agenda hii, endesha milestones zote zenye agenda ZAKE ZOME zimefungwa na bado
+      // hazijasainiwa — yani mjadala wa Mk+1 HAUSIKI kabla Mk imemaliza Mpango → Computer → ukaguzi → sign-off.
+      await runPendingMilestones();
       await gate(`Agenda ${item.index}`);
 
       bcast({ type: "round", round: item.index, total: agenda.length });
@@ -3844,7 +3935,9 @@ KWENYE SEHEMU YA 4 (Maamuzi): taja KILA agenda ya Ledger (1 hadi ${agenda.length
       }
     }
     if (msRun && runner.computerPlanned && !runner.finale?.milestonesDone) {
-      const msSlices = milestoneDepsFor({ runner: runner as any, cuHooks: { persist, bcast, blog, addChip, recordUsage, usage, byProvider, title: conversationTitle } as CuHooks });
+      // R64: fallback — mjadala umemaliza bila milestones chache/za mwisho kushughulikiwa (inajumuisha legacy-resumed).
+      // Reja msSlicesFor() cache: kama host iliyotuitwa katikati ya mjadala, deps ni zilezle idempotent.
+      const msSlices = msSlicesFor();
       if (msSlices.ready) {
         blog("system", "🗺️ Awamu ya MILESTONES inaanza — Optimus anaandika Mpango wa milestone → Computer anajenga → ukaguzi → sign-off (inastahili yenyewe).");
         addChip("🗺️ Awamu ya milestones inaanza — kwa kila milestone: Mpango → Computer → Ushahidi → Ukaguzi → Sign-off. Hakuna kitufe; inaendelea yenyewe.");
@@ -3854,11 +3947,15 @@ KWENYE SEHEMU YA 4 (Maamuzi): taja KILA agenda ya Ledger (1 hadi ${agenda.length
             run: msRun,
             project: runner.project,
             facts,
+            // R64 (4.5 #2 + 4.6): ledger halisi katime plan + StartPack (hox host iliyoweza kupata placeholder hapo awali)
+            ledgerShort: await msLedgerShort(),
             hooks: { blog, addChip, bcast: (evt) => bcast(evt as any), persist },
             callLLM: async (agentId, messages, maxTokens) => auxChatWithRotation(agentId, messages, maxTokens, { cls: "heavy", purpose: "milestone-plan" }),
             deps: msSlices.deps,
             // C5 (4.2.7): idadi halisi ya agenda sasa — ikizidi map.totalAgendas ramani inapanuliwa muda wa run
             agendaCount: fbr.length,
+            // R64 (4.5 #1): mpango wa Mk una mini-reports za agenda zake
+            miniReportsFor: msMiniReportsFor,
             // C4 (7.6): wakaguzi wanaweza kutafuta ukweli wa nje (web) mara moja kabla ya hukumu
             searchFn: async (q: string) => {
               try {
