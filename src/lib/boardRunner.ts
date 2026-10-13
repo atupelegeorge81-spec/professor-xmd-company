@@ -143,6 +143,17 @@ function chip(runner: Runner, text: string) {
   broadcast(runner, { type: "system", text });
 }
 
+/** R62: simamisha KABISA kwa runner memory + DB (papohapo) — DB haiachwa nyuma tena (hatari: process kufa = mwendelekeze).
+ * Njia-kuja: DB marker inaangona sweeze isi-pause kwa makosa; persist("paused") ya gate ina-ku-confirm tu. */
+async function persistPausedMarker(r: Runner): Promise<void> {
+  try {
+    if (!r.sessionId) return; // doc haijaundwa bado — persistence ya kwanza itabeba hali halisi
+    const { updateSessionItems } = await import("./reports");
+    const items = Array.isArray(r.items) ? (r.items as Parameters<typeof updateSessionItems>[1]) : [];
+    await updateSessionItems(r.sessionId, items, "paused");
+  } catch (e) { console.warn("[board] persistPausedMarker imekufa:", String(e).slice(0, 140)); }
+}
+
 /** Detach: simamisha KABISA. Wito unaoendelea unakatwa sasa hivi; run() inasimama kwenye gate inayofuata. */
 export function pauseRun(id: string): Runner | null {
   const r = findRunner(id);
@@ -153,6 +164,8 @@ export function pauseRun(id: string): Runner | null {
   r.pausedAt = Date.now();
   r.pauseAbort?.abort();
   stateBus.update(r.id, { status: "paused" });
+  // R62: DB marker MARA MOJA — sweeper haikutazama haraka, na process ikikufa bado DB inasema ukweli
+  void persistPausedMarker(r);
   chip(r, "⏸️ Mjadala umesimamishwa — hakuna agent anayeendelea. Bonyeza Resume kuendelea pale pale ulipoishia.");
   // R38-RC5: CU haichiwi nje ya pause (ushahidi [243]: pause ilifuatiwa na matukio ~600 ya bridge).
   // Sandbox inahifadhi hali (snapshot → bucket) na bridge inasimamishwa; Resume inarejesha.
@@ -1197,6 +1210,23 @@ async function run(runner: Runner) {
     }
     // (msRun hutumika P3+: roster ya agenda, trigger ya milestone ya mwisho, orchestration)
     runner.milestones = msRun;
+    // R62-UX: kama milestones zimerukwa kwa plan-mode/env-off, ionekane mbiochip mara moja (silent-skip is marufuku)
+    if (!msRun && !milestonesEnabledFor(!!runner.computerPlanned)) {
+      const why = process.env.XMD_MILESTONES === "off"
+        ? "XMD_MILESTONES=off kwenye server env — badilisha mazingira"
+        : runner.computerPlanned ? "CU haipo tayari (E2B_API_KEY imekosa?)" : "plan mode inatumika — switch kwa code mode tukifanya ujenzi";
+      const msg = `🗺️ Milestones IMEZIMWA: ${why}. Run inaendelea kwa agenda pekee (hakuna milestones).`;
+      console.warn(`[board] ${msg}`);
+      // chip/hook ya kufanya iwe onekana kwenye stream (hata kwa replay — ikiwekwa kwenye items)
+      addChip(msg);
+      bcast({ type: "system", text: msg } as any);
+    } else if (milestonesEnabledFor(!!runner.computerPlanned) && agenda.length && !msRun) {
+      // msRun bado hakuna lakini ilitakiwa — thibitisha error in ionekane wazi (si warn tu)
+      const msg = "🗺️ Milestones HAIJAJENGWA bado — optimus anaangalia tena (check map stage).";
+      console.error(`[board] ${msg}`);
+      addChip(msg);
+      bcast({ type: "system", text: msg } as any);
+    }
 
     // ===== R26 · AWAMU 1: FACT SHEET — data rasmi ya brief inafungwa KWA CODE (chanzo kimoja cha ukweli) =====
     if (runner.facts === undefined || (runner.facts === null && !isResume)) {
@@ -3773,6 +3803,25 @@ KWENYE SEHEMU YA 4 (Maamuzi): taja KILA agenda ya Ledger (1 hadi ${agenda.length
     }
     // ===== MILESTONES HOST (4.4–4.9) — inachukua nafasi ya awamu ya kuu ya CU za zamani =====
     // Idempotent: msRun chip inabaki → Endeleza/resume inaendelea kiwango cha milestoniele (orchestrate).
+    // R62-RESCUE: session zilizopigwa pause chini ya code za kale kufikia host bila ramani → jitengezee saa hii.
+    if (!msRun && milestonesEnabledFor(!!runner.computerPlanned) && agenda.length && !runner.finale?.milestonesDone) {
+      try {
+        const got = await ensureMilestonesMap({
+          sessionId: sessionId || runner.id, project: runner.project,
+          brief: runner.items.find((x) => x.kind === "chip" && typeof x.text === "string" && x.text.startsWith("__PROFESSOR_XMD_BRIEF__:"))?.text?.slice("__PROFESSOR_XMD_BRIEF__:".length),
+          agenda: agenda.map((a) => ({ index: a.index, item: a.item })),
+          items: runner.items as unknown[],
+          computerPlanned: !!runner.computerPlanned,
+        }, { bcast, blog, addChip, persist });
+        if (got.run) {
+          msRun = got.run; runner.milestones = got.run;
+          if (got.fresh) await persist("milestones_created", conversationTitle);
+          addChip(`🗺️ Ramani ya milestones ilipatikana baadaye (${got.run.map.milestones.length}) — milestone host inapfruru.`);
+        }
+      } catch (e: any) {
+        blog("warning", `🗺️ Ramani (catch-up) imeshindwa: ${String(e?.message || e).slice(0, 120)} — milestone host inarukwa.`);
+      }
+    }
     if (msRun && runner.computerPlanned && !runner.finale?.milestonesDone) {
       const msSlices = milestoneDepsFor({ runner: runner as any, cuHooks: { persist, bcast, blog, addChip, recordUsage, usage, byProvider, title: conversationTitle } as CuHooks });
       if (msSlices.ready) {
