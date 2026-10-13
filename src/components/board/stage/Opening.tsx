@@ -1,5 +1,5 @@
 "use client";
-import { Code2, Compass, Landmark, ListChecks, Sparkles } from "lucide-react";
+import { Code2, Compass, Landmark, ListChecks, Lock, Sparkles } from "lucide-react";
 import { AGENTS } from "@/lib/team";
 import type { AgendaBuildItem, AgendaStartItem, ConveneItem, MsChipItem, MsMapItem, MsStartItem, ScopeItem } from "@/lib/stage/types";
 import { cn } from "@/lib/utils";
@@ -115,20 +115,47 @@ export function FinaleMark() {
 }
 
 
-/** P2-Q003 (uamuzi wa mmiliki 2026-10-12): card ya "milestone inawanzishwa" — iko sawa na AgendaStartMark. */
+/** P2-Q003 → R63 (2026-10-13): Badge ya MILE — TOFAUTI kabisa na agenda pill:
+ * tile ya gradient (violet→fuchsia, kona za mraba), mpaka wa agenda (A1–A2), mode chip, roster avatars.
+ * Lifecycle: DISCUSSING (uitwaji mjadalani) → PLANNING → BUILDING (badge ya < / > Computer inatokea) → SIGNED_OFF (lock kijani). */
 export function MsStartMark({ it }: { it: MsStartItem }) {
   const m = it.milestone;
+  const st = m.status || "PLANNING";
+  const signed = st === "SIGNED_OFF" || st === "SIGNED_OFF_WITH_WAIVERS";
+  const computerOn = !signed && st !== "DISCUSSING";
+  const modeTone: "violet" | "warn" | "sky" = m.mode === "technical" ? "warn" : m.mode === "mixed" ? "sky" : "violet";
+  const range = typeof m.from === "number" ? (m.to && m.to !== m.from ? `A${m.from}–A${m.to}` : `A${m.from}`) : null;
   return (
     <div id={`milestone-${m.id}`} className="scroll-mt-16 animate-[rise_0.5s_both] pt-3">
       <div className="flex items-center gap-3 py-2">
-        <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[var(--color-line-strong)]" />
-        <span className="flex max-w-[82%] items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-ink-2)] py-1 pl-1 pr-2 text-[11.5px]">
-          <span className="rounded-full bg-white/[0.07] px-2 py-0.5 font-mono text-[10.5px] font-semibold text-[var(--color-fg)]">{m.id}{m.total ? `/${m.total}` : ""}</span>
-          <span className="truncate text-[var(--color-fg-2)]">{m.title}</span>
-          {m.status && m.status !== "PLANNING" ? <span className="rounded-full bg-white/[0.05] px-1.5 py-0.5 font-mono text-[9.5px] text-[var(--color-muted)]">{m.status}</span> : null}
+        <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[rgb(167_139_250/0.4)]" />
+        <div className={cn(
+          "flex max-w-[86%] items-center gap-2.5 rounded-2xl border py-1.5 pl-1.5 pr-2.5 text-[11.5px]",
+          signed
+            ? "border-[rgb(52_211_153/0.4)] bg-[rgb(52_211_153/0.06)]"
+            : "border-[rgb(167_139_250/0.45)] bg-[linear-gradient(135deg,rgb(139_92_246/0.16),rgb(217_70_239/0.07))] shadow-[0_0_18px_-6px_rgb(139_92_246/0.55)]",
+        )}>
+          {/* tile ya M — msingi wa kutofautisha na agenda (rounded-lg + gradient + glow) */}
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#8b5cf6] to-[#d946ef] font-mono text-[11px] font-bold text-white shadow-[0_2px_12px_-2px_rgb(168_85_247/0.9)]">{m.id}</span>
+          <span className="min-w-0 leading-tight">
+            <span className="block text-[8px] font-bold uppercase tracking-[0.14em] text-[#c4b5fd]">
+              milestone{m.total ? ` ${m.index || ""}/${m.total}` : ""} · {st === "DISCUSSING" ? "inaitwa — mjadala" : signed ? "imefungwa" : "inaendelea"}
+            </span>
+            <span className="block truncate text-[12px] font-semibold text-[var(--color-fg)]">{m.title}</span>
+          </span>
+          {range && <Tag tone={modeTone} mono>{range}</Tag>}
+          {m.mode && <Tag tone={modeTone}>{m.mode}</Tag>}
+          {!!m.roster?.length && <AvatarStack agents={(m.roster || []).map((o) => ag(o as Parameters<typeof ag>[0])).filter(Boolean)} size={18} />}
+          {/* R63: badge ya COMPUTER — inatokea mara Optimus mkaliji wa map/mpango wa CU anapoanza (PLANNING+), huenea hadi verify */}
+          {computerOn && (
+            <span className="flex shrink-0 animate-[rise_0.4s_both] items-center gap-1 rounded-full border border-[rgb(125_211_252/0.45)] bg-[rgb(56_189_248/0.14)] px-2 py-0.5 text-[9.5px] font-semibold text-[#7dd3fc]">
+              <Code2 size={10} /> Computer
+            </span>
+          )}
           {m.round ? <span className="rounded-full bg-white/[0.05] px-1.5 py-0.5 font-mono text-[9.5px] text-[#7dd3fc]">R{m.round}/{m.maxRounds || 10}</span> : null}
-        </span>
-        <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[var(--color-line-strong)]" />
+          {signed && <Lock size={11} className="shrink-0 text-[var(--color-ok)]" />}
+        </div>
+        <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[rgb(167_139_250/0.4)]" />
       </div>
     </div>
   );

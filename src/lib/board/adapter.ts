@@ -936,9 +936,34 @@ export function createBoardAdapter(opts: { instant?: boolean; now?: () => number
         break;
       }
       case "msStart": {
-        // Q-003: card kamili kama agendaStart — pinga dukika tu ya kwanza (idempotency: replay ihifadhi)
-        if (!items.some((x) => x.kind === "msStart" && x.milestone.id === e.milestone.id)) {
-          add({ kind: "msStart", id: nid(), milestone: { id: e.milestone.id, title: e.milestone.title, total: e.milestone.total, index: e.milestone.index, status: (e.milestone.status || "PLANNING") as never, round: e.milestone.round, maxRounds: e.milestone.maxRounds }, shown: 1 } as Extract<StageItem, { kind: "msStart" }>);
+        // Q-003: card kamili kama agendaStart — dukika ya kwanza inaiunda; zinazofuata (id ile ile) ZINAI-PATCH
+        // → lifecycle: DISCUSSING (uitwaji mjadalani) → PLANNING → BUILDING (badge ya Computer) → SIGNED_OFF.
+        const pm0 = e.milestone as { from?: number; to?: number; mode?: string; roster?: string[]; status?: string; round?: number; maxRounds?: number; title?: string; total?: number; index?: number };
+        const prev = items.find((x) => x.kind === "msStart" && x.milestone.id === e.milestone.id) as Extract<StageItem, { kind: "msStart" }> | undefined;
+        if (prev) {
+          const mp = { ...prev.milestone };
+          if (pm0.title) mp.title = pm0.title as never;
+          if (pm0.total) mp.total = pm0.total;
+          if (pm0.index) mp.index = pm0.index;
+          if (pm0.status) mp.status = pm0.status as never;
+          if (typeof pm0.round === "number") mp.round = pm0.round;
+          if (pm0.maxRounds) mp.maxRounds = pm0.maxRounds;
+          if (typeof pm0.from === "number") mp.from = pm0.from;
+          if (typeof pm0.to === "number") mp.to = pm0.to;
+          if (pm0.mode) mp.mode = pm0.mode;
+          if (Array.isArray(pm0.roster) && pm0.roster.length) mp.roster = pm0.roster.map(String);
+          patch(prev.id, { milestone: mp });
+        } else {
+          add({
+            kind: "msStart", id: nid(),
+            milestone: {
+              id: e.milestone.id, title: e.milestone.title, total: e.milestone.total, index: e.milestone.index,
+              status: (e.milestone.status || "PLANNING") as never, round: e.milestone.round, maxRounds: e.milestone.maxRounds,
+              from: typeof pm0.from === "number" ? pm0.from : undefined, to: typeof pm0.to === "number" ? pm0.to : undefined,
+              mode: pm0.mode, roster: Array.isArray(pm0.roster) ? pm0.roster.map(String) : undefined,
+            },
+            shown: 1,
+          } as Extract<StageItem, { kind: "msStart" }>);
         }
         break;
       }

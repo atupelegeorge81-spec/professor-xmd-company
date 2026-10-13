@@ -1,5 +1,5 @@
 "use client";
-import { Link2, Lock, CircleDashed, Sparkles } from "lucide-react";
+import { Link2, Lock, CircleDashed, Sparkles, Code2 } from "lucide-react";
 import type { AgendaDef, AgendaPhase, FinalePhase, LiveStage } from "@/lib/stage/types";
 import { cn } from "@/lib/utils";
 import { TONE } from "./kit";
@@ -62,7 +62,8 @@ export function StageRail({ stage, agenda, live }: { stage: LiveStage; agenda: A
             </a>
           );
         })}
-        {/* P2 (maelezo.md 14.P2): strip ndogo ya milestones — hali ya kila moja kwa mstari */}
+        {/* P2 (maelezo.md 14.P2) → R63: strip ya milestones — TICKET ya gradient (violet→fuchsia) TOFAUTI na pill za agenda;
+            tile ya M + </> Computer inapoanzishwa (PLANNING→VERIFYING) + lock inaposign-off */}
         {!!stage.milestones?.length && (
           <>
             <span className="mx-1 h-4 w-px shrink-0 bg-[var(--color-line)]" />
@@ -71,12 +72,22 @@ export function StageRail({ stage, agenda, live }: { stage: LiveStage; agenda: A
                 m.status === "SIGNED_OFF" ? TONE.ok
                 : m.status === "SIGNED_OFF_WITH_WAIVERS" || m.status === "CAP_REACHED" ? TONE.warn
                 : m.status === "BLOCKED" ? TONE.bad : null;
+              const computerOn = !!m.status && !["DISCUSSING", "SIGNED_OFF", "SIGNED_OFF_WITH_WAIVERS", "CAP_REACHED", "BLOCKED"].includes(m.status);
               return (
-                <span key={m.id} title={`${m.title} · ${m.status}${m.round ? ` · raundi ${m.round}/${m.maxRounds}` : ""} · ${m.mode}`}
-                  className={cn("flex h-6 shrink-0 items-center gap-1 rounded-full border px-2 text-[10.5px] font-semibold", m.active ? "prism-border text-[var(--color-fg)]" : "border-[var(--color-line)] text-[var(--color-muted)]")}
-                  style={tone ? { color: tone.c, borderColor: `rgb(${tone.rgb} / 0.35)`, background: `rgb(${tone.rgb} / 0.08)` } : undefined}>
-                  {m.status === "SIGNED_OFF" ? <Lock size={10} /> : m.active ? <span className="h-1.5 w-1.5 rounded-full bg-prism animate-pulse" /> : null}
-                  {m.id}
+                <span key={m.id} title={`MILESTONE · ${m.title} · ${m.status}${m.round ? ` · raundi ${m.round}/${m.maxRounds}` : ""} · ${m.mode}`}
+                  className={cn(
+                    "flex h-6 shrink-0 items-center gap-1.5 rounded-lg border py-0.5 pl-0.5 pr-1.5 text-[10.5px] font-semibold",
+                    m.active
+                      ? "border-[rgb(167_139_250/0.55)] bg-[linear-gradient(135deg,rgb(139_92_246/0.18),rgb(217_70_239/0.08))] text-[var(--color-fg)] shadow-[0_0_12px_-4px_rgb(139_92_246/0.7)]"
+                      : "border-[var(--color-line)] text-[var(--color-muted)]",
+                  )}
+                  style={tone ? { color: tone.c, borderColor: `rgb(${tone.rgb} / 0.4)`, background: `rgb(${tone.rgb} / 0.08)` } : undefined}>
+                  {/* tile ya gradient — alama rasmi ya MILE (si dot kama agenda) */}
+                  <span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-md font-mono text-[9px] font-bold", tone ? "" : "bg-gradient-to-br from-[#8b5cf6] to-[#d946ef] text-white")} style={tone ? { background: `rgb(${tone.rgb} / 0.18)`, color: tone.c } : undefined}>
+                    {m.status === "SIGNED_OFF" ? <Lock size={9} /> : m.id}
+                  </span>
+                  {m.active && !tone && <span className="h-1.5 w-1.5 rounded-full bg-prism animate-pulse" />}
+                  {computerOn && <Code2 size={10} className="text-[#c4b5fd]" />}
                   {(m.status === "FIXING" || m.status === "VERIFYING") && (
                     <span className="font-mono font-normal opacity-80">R{m.round}</span>
                   )}

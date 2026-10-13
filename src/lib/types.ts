@@ -73,8 +73,9 @@ export type BoardEvent =
   | { type: "mode"; mode: "code" | "plan" }
   /** P2 (maelezo.md): onyesho dogo la milestone (ramani iliyotengenezwa, mabadiliko ya hali) */
   | { type: "milestone"; milestone: { id: string; title: string; status: string; round: number; maxRounds: number; mode: "visual" | "technical" | "mixed"; active: boolean } }
-  /** Q-003 (uamuzi wa mmiliki): card ya "milestone inawanzishwa" kama agendaStart — stage stream */
-  | { type: "msStart"; milestone: { id: string; title: string; total?: number; index?: number; status?: string; round?: number; maxRounds?: number } }
+  /** Q-003 (uamuzi wa mmiliki): card ya "milestone inawanzishwa" kama agendaStart — stage stream.
+   * R63: from/to/mode/roster — card inaonyesha mpaka wa agenda + aina + washiriki; status hubadilishwa (DISCUSSING→PLANNING→BUILDING→SIGNED_OFF) kupitia tukio jipya lenye id ile ile. */
+  | { type: "msStart"; milestone: { id: string; title: string; total?: number; index?: number; status?: string; round?: number; maxRounds?: number; from?: number; to?: number; mode?: string; roster?: string[] } }
   /** Q-003-UX: card ya RAMANI ya milestones (shimmer → orodha kamili) — kama AgendaBuildCard ya agenda */
   | { type: "msMap"; pending?: boolean; total?: number; fallback?: boolean; milestones: { id: string; title: string; from: number; to: number; mode?: string; roster?: string[] }[] }
   | { type: "error"; message: string }

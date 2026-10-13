@@ -243,6 +243,8 @@ export interface MilestoneDef {
   id: string; title: string; total?: number; index?: number;
   status?: "DISCUSSING" | "PLANNING" | "BUILDING" | "REVIEW_R0" | "FIXING" | "VERIFYING" | "INHERITED" | "SIGNED_OFF" | "SIGNED_OFF_WITH_WAIVERS" | "CAP_REACHED" | "BLOCKED" | "WAIT_VISION";
   round?: number; maxRounds?: number;
+  /** R63: mpaka wa agenda + aina + washiriki (kwa card ya uitwaji wa milestone) */
+  from?: number; to?: number; mode?: string; roster?: string[];
 }
 
 /** # msStart — card ya "milestone inawanzishwa" (uamuzi Q-003 wa mmiliki) */

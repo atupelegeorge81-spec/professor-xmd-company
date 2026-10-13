@@ -161,9 +161,15 @@ function recordJudgeLane(run: MilestonesRunState, partial: { stepId: string; tie
 
     hooks.bcast({ type: "milestone", id: mid, index: run.map.milestones.findIndex((x) => x.id === mid) + 1, total: run.map.milestones.length });
     // Q-003 (uamuzi wa mmiliki): card kamili kama agenda inapoanza milele — bcast + persistence
+    // R63: payload kamili (from/to/mode/roster) — adapter inai-patch card iliyopo (lifecycle DISCUSSING → PLANNING)
     {
       const mdef = run.map.milestones.find((x) => x.id === mid);
-      const payload = { id: mid, title: mdef?.title || mid, total: run.map.milestones.length, index: run.map.milestones.findIndex((x) => x.id === mid) + 1, status: "PLANNING", maxRounds: run.states?.[mid]?.maxRounds || 10 };
+      const payload = {
+        id: mid, title: mdef?.title || mid, total: run.map.milestones.length, index: run.map.milestones.findIndex((x) => x.id === mid) + 1,
+        status: "PLANNING", maxRounds: run.states?.[mid]?.maxRounds || 10,
+        from: mdef?.agendas?.from, to: mdef?.agendas?.to, mode: mdef?.reviewMode,
+        roster: Array.isArray(mdef?.roster) ? mdef!.roster.map(String) : undefined,
+      };
       hooks.bcast({ type: "msStart", milestone: payload });
       if (!(args.runner.items as unknown[]).some((x) => (x as { kind?: string; milestone?: { id?: string } }).kind === "msStart" && (x as { milestone?: { id?: string } }).milestone?.id === mid)) {
         (args.runner.items as unknown[]).push({ kind: "msStart", id: `ms_start_${mid.toLowerCase()}_${Date.now().toString(36)}`, milestone: payload, shown: 1, createdAt: new Date().toISOString() });
@@ -171,6 +177,8 @@ function recordJudgeLane(run: MilestonesRunState, partial: { stepId: string; tie
       }
     }
     hooks.addChip(` Milestone ${mid} (${run.map.milestones.find((x) => x.id === mid)?.title || mid}) — Optimus anaandika Mpango → Computer anajenga → ukaguzi.`);
+    // R63: Badge ya COMPUTER inatokea sasa — card ya milestone inapata </> Computer mara ujenzi unapoanza
+    hooks.bcast({ type: "msStart", milestone: { id: mid, status: "BUILDING" } });
     try {
       const r = await runMilestonePipeline(args.runner.items, run, deps, mid);
       results.push(r);
@@ -178,6 +186,10 @@ function recordJudgeLane(run: MilestonesRunState, partial: { stepId: string; tie
       if (r.signedOff) {
         signedOff.push(mid);
         hooks.blog("success", `✅ Milestone ${mid}: SIGNED_OFF baada ya raundi ${r.rounds}.`);
+        // R63: card ya milestone iandahiwe SIGNED_OFF (lock) — live patch + persistence
+        hooks.bcast({ type: "msStart", milestone: { id: mid, status: "SIGNED_OFF", round: r.rounds } });
+        const pit = (args.runner.items as unknown[]).find((x) => (x as unknown as { kind?: string; milestone?: { id?: string } }).kind === "msStart" && (x as unknown as { milestone?: { id?: string } }).milestone?.id === mid) as { milestone?: Record<string, unknown> } | undefined;
+        if (pit?.milestone) { pit.milestone = { ...pit.milestone, status: "SIGNED_OFF", round: r.rounds }; }
         hooks.addChip(`✅ Milestone ${mid} imekubaliwa (SIGNED_OFF) — raundi ${r.rounds}, defects ${r.defectsTotal}, wazi ${r.defectsOpen}.`);
         await hooks.persist(`milestone_signed_${mid.toLowerCase()}`).catch(() => {});
       }

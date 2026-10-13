@@ -1532,6 +1532,27 @@ async function run(runner: Runner) {
       await gate(`Agenda ${item.index}`);
 
       bcast({ type: "round", round: item.index, total: agenda.length });
+      // ===== MILESTONE INLINE-INVOCATION (R63 · uitwaji): mile inaitwa PAPO HAPO inapoingia agenda yake ya kwanza =====
+      // M1 inatokea badge A1 inapoanza; M2 A{from}-ake… card inapatch-iwa baadaye (PLANNING → BUILDING/badge ya Computer → SIGNED_OFF).
+      if (msRun) {
+        const msEntry = msRun.map.milestones.find((x) => item.index === x.agendas.from);
+        if (msEntry) {
+          const mid = msEntry.id;
+          const payload = {
+            id: mid, title: msEntry.title,
+            total: msRun.map.milestones.length, index: msRun.map.milestones.findIndex((x) => x.id === mid) + 1,
+            status: "DISCUSSING", round: 0, maxRounds: msRun.states?.[mid]?.maxRounds || 10,
+            from: msEntry.agendas.from, to: msEntry.agendas.to, mode: msEntry.reviewMode,
+            roster: Array.isArray(msEntry.roster) ? msEntry.roster.map(String) : [],
+          };
+          const already = (runner.items as unknown[]).some((x) => (x as { kind?: string; milestone?: { id?: string } }).kind === "msStart" && (x as { milestone?: { id?: string } }).milestone?.id === mid);
+          bcast({ type: "msStart", milestone: payload } as any);
+          if (!already) {
+            (runner.items as unknown[]).push({ kind: "msStart", id: `ms_start_${mid.toLowerCase()}_${Date.now().toString(36)}`, milestone: payload, shown: 1, createdAt: new Date().toISOString() });
+            await persist(`milestone_discuss_${mid.toLowerCase()}`, conversationTitle).catch(() => {});
+          }
+        }
+      }
       const ownerAgentsAll = item.owners.map((o) => getAgent(o)!).filter(Boolean);
       // 4.3 ROSTER-GATE (milestones mode): wanaojadili ni roster ya milestone hii ∩ owners;
       // mahala hakuna mpishano → pm-fallback na sasisho la map (code ndiyo mwamuzi wa hatua inayofuata).
