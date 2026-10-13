@@ -176,3 +176,22 @@ describe("C5 · extendMilestoneMap (4.2.7)", () => {
     expect(r!.map.milestones.at(-1)!.agendas).toEqual({ from: 3, to: 3 });
   });
 });
+
+describe("mapPrompt · uhuru wa kuchagua idadi (amri ya mmiliki)", () => {
+  it("prompt inasema wazi HAKUNA kikomo — Optimus anachagua idadi mwenyewe", () => {
+    const p = mapPrompt({ project: "X", agenda: agendaOf(7), defaultMode: "visual" });
+    expect(p.system).toMatch(/IDADI YA MILESTONES: unachagua WEWE MWENYEWE/);
+    expect(p.system).toMatch(/HAKUNA kikomo/);
+    // hakuna msomi wa kufuatia (mf. "lazima iwe 3" au "ceil") katika prompt
+    expect(p.system).toMatch(/2, 3, 4 au zaidi/);
+  });
+  it("validateMilestoneMap hairusu overlap/pengo lakini HAIPANGI idadi — 2 au 7 zinakubalika", () => {
+    const m2 = goodMapFor(7);
+    const v2 = validateMilestoneMap(m2 as object, 7, "sess");
+    expect(v2.ok).toBe(true);
+    // 7 milestones moja-moja (1 agenda kila moja) — zinapaswa kupita
+    const m7 = { milestones: Array.from({ length: 7 }, (_, i) => ({ id: `M${i + 1}`, title: `t${i + 1}`, agendas: { from: i + 1, to: i + 1 }, phase: "p", reviewMode: "visual", roster: ["optimus"], rationale: "r" })) };
+    const v7 = validateMilestoneMap(m7 as object, 7, "sess");
+    expect(v7.ok).toBe(true);
+  });
+});

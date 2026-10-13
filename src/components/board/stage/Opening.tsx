@@ -1,7 +1,7 @@
 "use client";
 import { Code2, Compass, Landmark, ListChecks, Sparkles } from "lucide-react";
 import { AGENTS } from "@/lib/team";
-import type { AgendaBuildItem, AgendaStartItem, ConveneItem, MsChipItem, MsStartItem, ScopeItem } from "@/lib/stage/types";
+import type { AgendaBuildItem, AgendaStartItem, ConveneItem, MsChipItem, MsMapItem, MsStartItem, ScopeItem } from "@/lib/stage/types";
 import { cn } from "@/lib/utils";
 import { AgentAvatar, AvatarStack } from "../../ui/AgentAvatar";
 import { Card, Lane, Tag, ag } from "./kit";
@@ -131,6 +131,45 @@ export function MsStartMark({ it }: { it: MsStartItem }) {
         <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[var(--color-line-strong)]" />
       </div>
     </div>
+  );
+}
+/** Q-003-UX: card ya RAMANI ya milestones — umbo/mmonekano sawa na AgendaBuildCard.
+ * pending → shimmer/skeleton (Optimus anatengeneza); kamili → orodha yenye range ya agenda + mode + roster. */
+export function MsMapCard({ it }: { it: MsMapItem }) {
+  return (
+    <Lane>
+      <Card
+        tone="violet"
+        icon={<Compass size={15} />}
+        eyebrow={it.pending ? "Milestones · ramani inaundwa…" : `Milestones · ramani ${it.total}`}
+        right={it.fallback && !it.pending ? <Tag tone="muted">dharura</Tag> : undefined}
+      >
+        {it.pending ? (
+          <>
+            <div className="mt-1 text-[12.5px] text-[var(--color-fg-2)]">
+              <span className="shimmer-text">Optimus anatengeneza ramani ya milestones…</span>
+            </div>
+            <ol className="mt-2 space-y-1.5">
+              {[0, 1, 2].map((i) => (
+                <li key={i} className="st-skel h-[40px] rounded-xl" />
+              ))}
+            </ol>
+          </>
+        ) : (
+          <ol className="mt-2 space-y-1.5">
+            {it.milestones.map((m) => (
+              <li key={m.id} className="flex items-center gap-2.5 rounded-xl border border-[var(--color-line)] bg-white/[0.02] px-2.5 py-2 animate-[rise_0.35s_both]">
+                <span className="grid h-6 min-w-[26px] shrink-0 place-items-center rounded-lg bg-[rgb(167_139_250/0.12)] px-1 font-mono text-[10px] font-semibold text-[#c4b5fd]">{m.id}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-fg)]">{m.title}</span>
+                <Tag tone="sky" mono>{m.from === m.to ? `A${m.from}` : `A${m.from}–A${m.to}`}</Tag>
+                {m.mode ? <Tag tone="muted">{m.mode}</Tag> : null}
+                <AvatarStack agents={(m.roster || []).map((o) => ag(o as Parameters<typeof ag>[0])).filter(Boolean)} size={18} />
+              </li>
+            ))}
+          </ol>
+        )}
+      </Card>
+    </Lane>
   );
 }
 export function MsChipMark({ it }: { it: MsChipItem }) {

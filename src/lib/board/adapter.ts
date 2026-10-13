@@ -942,6 +942,17 @@ export function createBoardAdapter(opts: { instant?: boolean; now?: () => number
         }
         break;
       }
+      case "msMap": {
+        // Q-003-UX: card ya ramani — shimmer {pending} → orodha kamili (id thabiti; final ina-patch pending)
+        const card = {
+          kind: "msMap", id: "msmap_main",
+          total: e.total || 0, pending: e.pending || undefined, fallback: e.fallback || undefined,
+          milestones: (e.milestones || []).map((m) => ({ id: String(m.id), title: String(m.title || m.id), from: Number(m.from) || 0, to: Number(m.to) || 0, mode: m.mode ? String(m.mode) : undefined, roster: Array.isArray(m.roster) ? m.roster.map(String) : [] })),
+        } as Extract<StageItem, { kind: "msMap" }>;
+        if (get("msmap_main")) patch("msmap_main", card);
+        else add(card);
+        break;
+      }
       case "activity": {
         if (e.state === "start") {
           const text = e.text || "";
@@ -1532,6 +1543,10 @@ export function savedToEvents(items: SavedItem[], project: string): AdapterEvent
     else if (it.kind === "chip" && it.text && !HIDDEN.test(it.text)) out.push({ type: "system", text: it.text });
     else if (it.kind === "round") out.push({ type: "round", round: it.round || 0, total: it.total || 0 });
     else if ((it as any).kind === "msStart") out.push({ type: "msStart", milestone: (it as any).milestone } as AdapterEvent);
+    else if ((it as any).kind === "msMap") {
+      const mm = it as { total?: number; fallback?: boolean; milestones?: unknown[] };
+      out.push({ type: "msMap", total: mm.total || 0, fallback: mm.fallback, milestones: mm.milestones || [] } as AdapterEvent);
+    }
     else if (it.kind === "msg") {
       const id = it.id || nid();
       out.push({ type: "msg_start", id, agentId: it.agentId || "pm" });

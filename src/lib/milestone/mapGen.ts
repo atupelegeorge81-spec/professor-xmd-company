@@ -31,6 +31,7 @@ export function mapPrompt(i: { project: string; brief?: string; agenda: AgendaIt
     "KAZI YA SIKU HIZI: gawanya agenda ya mradi kuwa RAMANI YA MILESTONES (Mpango wa hatua_{-kubwa}).",
     "JIBU: JSON TUPEKEE. Hakuna maelezo ya ziada, hakuna maandishi ya nje ya JSON.",
     "Kanuni za ramani (CODE itazihakiki — kikosa moja, unarudishiwa makosa):",
+    "- IDADI YA MILESTONES: unachagua WEWE MWENYEWE kuhusika na umbo/ugu wa kazi — ziwe 2, 3, 4 au zaidi; HAKUNA kikomo wala ripotazania. Amua kimatalaulu (mf. kipengele kikubwa/kigumu ni milestone yake; vipengele vidogo vinaweza kunganishwa).",
     "- milestones zinafunika agenda 1..N ZOTE, kwa mpangilio, bila pengo wala overlap.",
     "- kila milestone: id (M1,M2,…), title, agendas{from,to}, phase, reviewMode ('visual'|'technical'|'mixed'), roster ya agents wanaohitajika (majina au ids: optimus/ultron/vextron/megatron/cybertron), rationale.",
     "- KUKUBALI: misombo mingi — UI/vipengele vya kuonekana; technical — backend/usalama/DB/deploy; mixed — zote.",

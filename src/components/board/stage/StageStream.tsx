@@ -3,7 +3,7 @@ import "./stage.css";
 import type { StageItem } from "@/lib/stage/types";
 import { UserPrompt } from "../parts";
 import { Fragment, memo, useCallback, useRef } from "react";
-import { AgendaBuildCard, AgendaStartMark, ConveneCard, FinaleMark, ScopeCard , MsChipMark, MsStartMark } from "./Opening";
+import { AgendaBuildCard, AgendaStartMark, ConveneCard, FinaleMark, ScopeCard , MsChipMark, MsMapCard, MsStartMark } from "./Opening";
 import { EvidenceCard } from "./Evidence";
 import { ChairCard, ConsensusTick, StageMessage } from "./Turn";
 import { AssemblyCard, DeliverableCard, ReviewCard, ScriptCard } from "./Code";
@@ -40,6 +40,7 @@ const StageNode = memo(function StageNode({ it, onResume, sessionId }: { it: Sta
     case "agendaBuild": return <AgendaBuildCard it={it} />;
     case "agendaStart": return <AgendaStartMark it={it} />;
     case "msStart": return <MsStartMark it={it} />;
+    case "msMap": return <MsMapCard it={it} />;
     case "msChip": return <MsChipMark it={it} />;
     case "evidence": return <EvidenceCard it={it} />;
     case "turn": return <StageMessage it={it} />;

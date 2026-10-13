@@ -90,14 +90,40 @@ export async function ensureMilestonesMap(io: EnsureMapIO, hooks: MsHooks): Prom
     : (system: string, user: string) => llmViaJudge("pm", `${io.agenda[0]?.index ?? 1}..${io.agenda.length}.map`, system, user, (lane, vision, fb) => {
         hooks.recordLane?.(firstMilestoneId(io.items), { call: "A.map", lane, visionCapable: vision, fallback: fb });
       });
-  const gen = await generateMilestoneMap({
-    callLLM: caller,
-    agenda: io.agenda,
-    sessionId: io.sessionId,
-    project: io.project,
-    brief: io.brief,
-    defaultMode: io.defaultMode,
-  });
+  // Q-003-UX: card ya RAMANI — SHIMMER {pending} tunapofanya LLM (Optimus anatengeneza),
+  // kisha orodha KAMILI ya milestones ikikatwa na validator (umbo kama AgendaBuildCard)
+  const itemsArr = io.items as Array<Record<string, unknown>>;
+  const MSMAP_ID = "msmap_main";
+  if (!itemsArr.some((x) => x?.kind === "msMap" && x.id === MSMAP_ID)) {
+    itemsArr.push({ kind: "msMap", id: MSMAP_ID, total: 0, pending: true, milestones: [] });
+    hooks.bcast({ type: "msMap", pending: true, total: 0, milestones: [] } as BoardEvent);
+  }
+  let gen: Awaited<ReturnType<typeof generateMilestoneMap>>;
+  try {
+    gen = await generateMilestoneMap({
+      callLLM: caller,
+      agenda: io.agenda,
+      sessionId: io.sessionId,
+      project: io.project,
+      brief: io.brief,
+      defaultMode: io.defaultMode,
+    });
+  } catch (e) {
+    // shimmer isindelee milele — ondoa pending kabla ya kurudisha hitilafu juu
+    const ix = itemsArr.findIndex((x) => x?.kind === "msMap" && x.id === MSMAP_ID && x.pending);
+    if (ix >= 0) itemsArr.splice(ix, 1);
+    throw e;
+  }
+  {
+    const card = {
+      kind: "msMap", id: MSMAP_ID,
+      total: gen.map.milestones.length, pending: false, fallback: gen.usedFallback,
+      milestones: gen.map.milestones.map((m) => ({ id: m.id, title: m.title, from: m.agendas.from, to: m.agendas.to, mode: m.reviewMode, roster: m.roster })),
+    };
+    const ix = itemsArr.findIndex((x) => x?.kind === "msMap" && x.id === MSMAP_ID);
+    if (ix >= 0) itemsArr[ix] = card; else itemsArr.push(card);
+    hooks.bcast({ type: "msMap", pending: false, total: card.total, fallback: gen.usedFallback, milestones: card.milestones } as BoardEvent);
+  }
   const run = initMilestonesRun(io.sessionId, gen.map);
   run.currentMilestoneId = gen.map.milestones[0]?.id || null;
   // kwa matumizi ya lane record: Flash inaonekana (TIERS zingine = visionDegraded on visual only)

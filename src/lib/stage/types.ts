@@ -253,6 +253,16 @@ export interface MsStartItem {
   planTitle?: string;
   shown: number;
 }
+/** # msMap — card ya RAMANI ya milestones (Optimus LLM → validator), umbo kama AgendaBuildCard */
+export interface MsMapItem {
+  kind: "msMap"; id: string;
+  total: number;
+  /** true wakati Optimus anatengeneza ramani (skeleton/shimmer); card inabaki mahali pake */
+  pending?: boolean;
+  /** true = ramani ya dharura (LLM ilishindwa mara 3) */
+  fallback?: boolean;
+  milestones: { id: string; title: string; from: number; to: number; mode?: string; roster?: string[] }[];
+}
 /** # msChip — chip ya hali ya milestone/round (updatable) */
 export interface MsChipItem {
   kind: "msChip"; id: string;
@@ -345,7 +355,7 @@ export type StageItem =
   | TaskItem | MemoryItem | SealItem | ObserversItem | SupersedeItem | OverruledItem
   | ValidatorItem | AssemblyItem | ReportItem | PlanItem | NoticeItem | SummaryItem
   | CuRunItem | CuReportItem | CuPauseItem
-  | MsStartItem | MsChipItem
+  | MsStartItem | MsChipItem | MsMapItem
   | CuThinkItem | CuTextItem | CuExecItem | CuShotItem | CuLinkItem | CuHookItem | CuErrorItem | CuDividerItem;
 
 /* ---------------- live stage (StageRail) ---------------- */
