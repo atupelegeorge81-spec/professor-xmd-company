@@ -122,18 +122,31 @@ export function llmDiscussAndMerge(o?: JudgeCallOpts) {
   return async (inp: {
     analyses: AnalystOutput[]; existingDefects: import("./types").Defect[]; run: import("./types").MilestonesRunState; milestone: Milestone;
   }): Promise<{ cos: ChangeOrder[]; suggestionsLedgerNotes?: string[] }> => {
-    // Hapa code inaiongoza: CO zinatengenezwa kutoka defects zilizopo — LLM anafanya "merge + Tangazo".
-    // (P5 itaingiza mjadala wa timu ×itifaki kamili; kernela ya defects→CO inabaki hapa.)
+    // §6.3 (peak): timu inazungumza kisha code huunganisha CO kutoka defects zilizopo —
+    // LLM anafanya merge + utangazo KWA kusikiliza sauti za wakaguzi waliokigundua kosa.
     const open = inp.existingDefects.filter((d) => d.milestoneId === inp.milestone.id && ["OPEN", "IN_FIX", "REOPENED"].includes(d.status));
     const cos: ChangeOrder[] = [];
+    // §6.3: MJADALA WA TIMU — kwa kila kosa wazi, wakaguzi waliokigundua huanza kwa kuzungumza
+    // (chanzo, mbinu, faili) kisha Optimus anaunganisha CO akiwa amesikiliza sauti zote.
+    const discussants = [...new Set(inp.analyses.map((a) => a.reviewer))].slice(0, 3);
     for (const d of open) {
       if (inp.run.cos.some((c) => c.defectIds.includes(d.id) && c.attempt === d.attempts + 1)) continue;
       const coId = `CO-${String(inp.run.cos.length + cos.length + 1).padStart(3, "0")}`;
+      const teamViews: string[] = [];
+      for (const rv of discussants) {
+        const t = await judgeText(
+          `${inp.milestone.id}.R0.discuss.${d.id}.${rv}`, rv,
+          `Wewe ni ${rv} wa timu. Kosa hili lilionekana wakati wa ukaguzi. Toa maoni MFUPI (2-4 sentensi): chanzo uwezekano (root cause), mbinu sahihi ya kurekebisha, na faili/routes zinazoguswa. Andika plain text bila JSON.`,
+          `Kosa: ${JSON.stringify({ id: d.id, title: d.title, expected: d.expected, actual: d.actual, evidence: d.evidence, area: d.area })}\nMilestone: ${inp.milestone.id} — ${inp.milestone.title}`,
+          { ...o, effort: "low", maxTokens: 700 },
+        );
+        if (t) teamViews.push(`${rv}: ${t.replace(/\s+/g, " ").trim().slice(0, 400)}`);
+      }
       const system = [
         "Wewe ni Optimus. Kwa kosa iliotajwa, andika ChangeOrder (CO) ya kitaalamu: faili/route/selector, hali ya sasa → inayotakiwa, na 2-4 vipimo vya kukubalika (aina za 8.3: command, grep, dom_exists, computed_style, no_horizontal_overflow, console_clean, contrast_min, touch_target_min, http, file_exists, file_contains, screenshot_taken).",
         "JIBU: JSON ya CO pekee: { id, defectIds:[id], attempt:1, priority:1, location:{files:[...], route?, selector?}, current, desired, visionNote?, acceptance: [ {...check} ], mode: 'standard' }",
       ].join("\n");
-      const user = `Kosa: ${JSON.stringify({ id: d.id, title: d.title, expected: d.expected, actual: d.actual, evidence: d.evidence, area: d.area })}\nCO id: ${coId}`;
+      const user = `Kosa: ${JSON.stringify({ id: d.id, title: d.title, expected: d.expected, actual: d.actual, evidence: d.evidence, area: d.area })}\nCO id: ${coId}${teamViews.length ? `\n\nMAONI YA TIMU (mjadala wa Raundi 0 — zingatia sauti hizi bila kupoteza vipimo vya kukubalika):\n${teamViews.join("\n")}` : ""}`;
       const co = await llmJson<ChangeOrder>(`${inp.milestone.id}.R0.merge.${d.id}`, "pm", system, user, (x) => {
         const raw = x as any;
         if (!raw || typeof raw !== "object") return { ok: false, errors: ["si object"] };

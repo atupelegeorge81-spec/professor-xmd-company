@@ -79,6 +79,8 @@ export interface OrchestratorDeps {
   /** §6.1.2: OCB kwa wakaguzi/hukumu (code-built; hostRun inaipeleka). Fake deps haipatikani bila ya hili. */
   ocbFor?: (roleId: string, step: string, round?: number) => string;
 
+  /** ledger fupi (Board) — StartPack inahitaji sehemu hii kwa 4.6 (si "host placeholder") */
+  ledgerFor?: () => string;
   /** §4.11/§12: kusanya git tag milestone-Mk + push (harness, si Computer). Fake deps haipatikani bila ya hili. */
   signOffCommit?: (milestoneId: string) => Promise<{ tag: string | null; pushed: boolean; note?: string }>;
   /** C8 (PENDEKEZO §7.3, env MS_BROWSER_EVAL=1): sign-off ya visual/mixed inahitaji kipimo cha BROWSER halisi kilicho PASS. */
@@ -173,11 +175,11 @@ export async function runMilestonePipeline(
   // A) mwanzo wa build (raundi 0)
   if (!alreadyDone(run, `${milestoneId}.B.build`)) {
     mark("BUILDING", `${milestoneId}.B.build.start`);
-    const ocbC = "(OCB-C inaongezwa na host ya run())";
+    const ocbC = deps.ocbFor?.("computer-build", `ujenzi wa mwanzo wa ${milestoneId} (${m.title})`, 0) || "(OCB-C: hajapatikana — host ijaze deps.ocbFor)";
     const pack = buildStartPack({
       project: run.sessionId, milestone: m, state: st, ocbC,
       inheritedDefects: run.defects.filter((d) => d.status === "INHERITED" && inheritedFor(milestoneId, run, d)),
-      ledgerSlice: "(ledger slice unatolewa na host ya run())",
+      ledgerSlice: deps.ledgerFor?.() || undefined,
     });
     const planMd = `${plan.md}\n\n${pack}`;
     note(`🖥️ Computer anajenga ${milestoneId}…`);
@@ -304,8 +306,11 @@ export async function runMilestonePipeline(
         }
       }
       const pack = buildStartPack({
-        project: run.sessionId, milestone: m, state: { ...st, round }, ocbC: "(OCB-C host)", cos: cosR,
+        project: run.sessionId, milestone: m, state: { ...st, round },
+        ocbC: deps.ocbFor?.("computer-fix", `raundi ${round}/${st.maxRounds} ya marekebisho — ${milestoneId} (${m.title})`, round) || "(OCB-C: hajapatikana — host ijaze deps.ocbFor)",
+        cos: cosR,
         inheritedDefects: run.defects.filter((d) => d.status === "INHERITED"),
+        ledgerSlice: deps.ledgerFor?.() || undefined,
       });
       const planMd = `${pack}\n\n# MPANGO (kumbukumbu — mpango kamili uko hapo juu; tumia CO kama msingi)\n\n${plan.md}`;
       const res = await deps.computerBuild({ label: `${milestoneId} raundi ${round}`, planMd, run, state: { ...st, round }, round });

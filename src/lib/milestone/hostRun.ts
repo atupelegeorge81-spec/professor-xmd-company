@@ -131,6 +131,8 @@ function recordJudgeLane(run: MilestonesRunState, partial: { stepId: string; tie
         });
       } catch { return `=== OCB (mfupi) ===\nHapa tulipo: ${step}\nMilestone: ${run.currentMilestoneId || "?"}`; }
     },
+    // 4.6: ledger slice ya kweli kwa StartPack (Board imefungwa kwenye mjadala) — si placeholder
+    ledgerFor: () => args.ledgerShort || "(ledger ya Board haikupatikana kwa phase hii)",
 
     // C8 (PENDEKEZO): browser_eval gate — kutoka env MS_BROWSER_EVAL=1
     browserEvalRequired: process.env.MS_BROWSER_EVAL === "1",
